@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSE 63B - Web Portal</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABNElEQVR4nO2WsU7DMBCG/xQxMDCyIqTyAjwBEhKIDZYu3dipS8fOvANSN2YegIGZgYkBiQFUqVLSJrGd2E7oD1ly5Pv+s8+nowCllFJKqf9KBKANoAXQBhCbziECaAB4BrAEsALwYjonB3AE8ODgeQJw7spJZT0wJe8AXEjyTpOHe14APJrOzeFOko+aPLW4Zz7OyboFnHU/G2LvYR5QSimllFJKKaWUUkqp/9YOgK6U3m7me93PhtgbXVtBl7KxJ8k7TR5b3DMfpz7ApSZ/tcjXV/KuJPe1uSsFnEvy51Pyy/9SwDNJPrPkV5r8oyZPlgKGkvzKkl/YOGkSOgB6AD4MHHbTJLQBjACs8yaB9d0N8A5gJt8T8iaxb8p/aEqKOhOA2lRQxebSLCWVUkoppZRSP/MNSW5e1MHr/SAAAAAASUVORK5CYII=">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f7f7f7;
+        }
+        
+        .section-padding {
+            padding: 3rem 1rem;
+        }
+        
+        @media (min-width: 640px) {
+            .section-padding {
+                padding: 4rem 2rem;
+            }
+        }
+        
+        #progress-bar {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            width: 0%;
+            transition: width 0.1s ease;
+            z-index: 40;
+        }
+        
+        .nav-link.active {
+            color: #2563eb;
+            font-weight: 600;
+            border-bottom: 2px solid #2563eb;
+        }
+        
+        #mobile-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        #mobile-menu.open {
+            max-height: 500px;
+        }
+        
+        .schedule-table {
+            border-collapse: separate;
+            border-spacing: 0 12px;
+        }
+        
+        .countdown-box {
+            min-width: 45px;
+        }
+        
+        .countdown-urgent-red .countdown-box {
+            background-color: #fee2e2;
+        }
+        
+        .countdown-urgent-red .text-xl {
+            color: #dc2626;
+        }
+        
+        .countdown-urgent-orange .countdown-box {
+            background-color: #fed7aa;
+        }
+        
+        .countdown-urgent-orange .text-xl {
+            color: #ea580c;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-animate {
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        .modal-content-animate {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        .dropdown-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .dropdown-content.open {
+            max-height: 500px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .calendar-day:hover {
+            background-color: #dbeafe;
+        }
+        
+        .calendar-day.has-event {
+            background-color: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .calendar-day.has-event:hover {
+            background-color: #1d4ed8;
+        }
+        
+        .calendar-day.today {
+            border: 3px solid #2563eb;
+            font-weight: bold;
+        }
+        
+        .calendar-day.today.has-event {
+            border: 3px solid #fbbf24;
+        }
+        
+        .tooltip {
+            position: absolute;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 250px;
+            display: none;
+        }
+        
+        .tooltip.show {
+            display: block;
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .new-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+            button, a {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+        
+        .scroll-indicator {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-50%) translateX(0); }
+            50% { transform: translateY(-50%) translateX(10px); }
+        }
+        
+        .swipe-indicator {
+            width: 40px;
+            height: 4px;
+            background: #d1d5db;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        
+        @media print {
+            nav, button, .modal, #progress-bar {
+                display: none !important;
+            }
+            
+            .section-padding {
+                page-break-inside: avoid;
+            }
+            
+            body {
+                background: white;
+            }
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        
+        .breadcrumb-separator {
+            color: #d1d5db;
+        }
+        
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            background: #2563eb;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 50;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.6);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="progress-bar"></div>
+
+    <nav class="sticky top-0 z-50 bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold" style="color: var(--primary-blue);">CSE 63B Portal</span>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#home" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Home</a>
+                    <a href="#announcements" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Announcements</a>
+                    <a href="#assignments" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Assignments</a>
+                    <a href="#schedule" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Schedule</a>
+                    <a href="#subjects" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Subjects</a>
+                    <a href="#contact" class="nav-link text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Contact</a>
+                </div>
+                
+                <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-blue-600 transition p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div id="mobile-menu" class="md:hidden">
+                <div class="px-2 pt-2 pb-3 space-y-1">
+                    <a href="#home" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Home</a>
+                    <a href="#announcements" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Announcements</a>
+                    <a href="#assignments" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Assignments</a>
+                    <a href="#schedule" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Schedule</a>
+                    <a href="#subjects" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Subjects</a>
+                    <a href="#contact" class="nav-link block text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium transition">Contact</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto">
+        
+        <section id="home" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
+            <div class="text-center pb-8">
+                <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold text-gray-800 leading-none">CSE 63B</h1>
+                <p class="mt-2 text-xl sm:text-2xl font-semibold" style="color: var(--primary-blue);">Web Portal</p>
+                
+                <div class="mt-6">
+                    <button id="open-calendar-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                        View Calendar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="announcements" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
+            <h2 class="text-2xl font-bold text-gray-700 border-b-2 pb-2 mb-6 flex items-center" style="border-color: var(--primary-blue);">
+                <i data-lucide="bell" class="w-6 h-6 mr-2" style="color: var(--primary-blue);"></i>
+                Latest Updates
+            </h2>
+
+            <div id="announcements-container" class="grid md:grid-cols-3 gap-6">
+                <!-- Announcements loaded from Supabase -->
+            </div>
+
+            <div class="mt-8 text-center">
+                <button id="open-announcement-history-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center mx-auto">
+                    <i data-lucide="history" class="w-5 h-5 mr-2"></i>
+                    View All Announcement History
+                </button>
+            </div>
+        </section>
+
+        <section id="assignments" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
+            <h2 class="text-2xl font-bold text-gray-700 border-b-2 pb-2 mb-6 flex items-center" style="border-color: var(--primary-blue);">
+                <i data-lucide="clipboard-list" class="w-6 h-6 mr-2" style="color: var(--primary-blue);"></i>
+                Active Assignments and Presentations
+            </h2>
+            
+            <div id="assignment-stats" class="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg mb-6 border border-blue-200">
+                <!-- Stats loaded dynamically -->
+            </div>
+            
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button onclick="filterAssignments('all')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition">
+                    All
+                </button>
+                <button onclick="filterAssignments('assignment')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+                    Assignments
+                </button>
+                <button onclick="filterAssignments('presentation')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+                    Presentations
+                </button>
+            </div>
+            
+            <div id="assignments-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Assignments loaded from Supabase -->
+            </div>
+
+            <div class="mt-8 text-center">
+                <button id="open-assignment-history-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center mx-auto">
+                    <i data-lucide="history" class="w-5 h-5 mr-2"></i>
+                    Assignment/Presentation History
+                </button>
+            </div>
+        </section>
+
+        <section id="schedule" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
+            <div class="flex justify-between items-center border-b-2 pb-2 mb-6" style="border-color: var(--primary-blue);">
+                <h2 class="text-2xl font-bold text-gray-700 flex items-center">
+                    <i data-lucide="calendar-days" class="w-6 h-6 mr-2" style="color: var(--primary-blue);"></i>
+                    Class Schedule
+                </h2>
+                <button id="export-schedule-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Export</span>
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto p-2 relative">
+                <div class="scroll-indicator md:hidden">
+                    <i data-lucide="chevron-right" class="w-6 h-6 text-gray-400"></i>
+                </div>
+                <table id="schedule-table" class="min-w-full text-center text-gray-800 schedule-table">
+                    <thead>
+                        <tr id="schedule-header" class="text-xs sm:text-sm font-semibold text-white rounded-t-xl" style="background-color: var(--primary-blue);"></tr>
+                    </thead>
+                    <tbody id="schedule-body" class="text-sm"></tbody>
+                </table>
+            </div>
+            <p class="text-sm text-gray-500 max-w-6xl mx-auto text-center mt-4">Note: Lab sessions span two time slots.</p>
+        </section>
+
+        <section id="subjects" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
+            <h2 class="text-2xl font-bold text-gray-700 border-b-2 pb-2 mb-6 flex items-center" style="border-color: var(--primary-blue);">
+                <i data-lucide="book-open" class="w-6 h-6 mr-2" style="color: var(--primary-blue);"></i>
+                Course Subjects & Resources
+            </h2>
+            
+            <div id="subjects-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Subjects loaded from Supabase -->
+            </div>
+        </section>
+
+        <section id="contact" class="section-padding bg-white shadow-lg rounded-xl mt-6 mb-6 mx-4">
+            <h2 class="text-2xl font-bold text-gray-700 border-b-2 pb-2 mb-6 flex items-center" style="border-color: var(--primary-blue);">
+                <i data-lucide="users" class="w-6 h-6 mr-2" style="color: var(--primary-blue);"></i>
+                Instructor & Contact Information
+            </h2>
+            
+            <div id="contact-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Contacts loaded from Supabase -->
+            </div>
+        </section>
+
+    </main>
+
+    <div class="fab" id="scroll-to-top" title="Scroll to top">
+        <i data-lucide="arrow-up" class="w-6 h-6"></i>
+    </div>
+
+    <!-- Calendar Modal -->
+    <div id="calendar-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-[100] hidden items-center justify-center p-4 modal-animate">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col modal-content-animate">
+            <div class="swipe-indicator md:hidden"></div>
+            <div class="flex justify-between items-center border-b p-6">
+                <div class="breadcrumb">
+                    <span>Home</span>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="font-semibold text-blue-600">Calendar</span>
+                </div>
+                <button id="close-calendar-btn" class="text-gray-500 hover:text-gray-800 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="flex justify-between items-center px-6 py-3 bg-gray-50">
+                <button id="prev-month-btn" class="p-2 hover:bg-gray-200 rounded-full transition">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <h3 id="calendar-month-year" class="text-lg font-bold text-gray-800"></h3>
+                <button id="next-month-btn" class="p-2 hover:bg-gray-200 rounded-full transition">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <div id="calendar-view"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcement History Modal -->
+    <div id="announcement-history-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-[100] hidden items-center justify-center p-4 modal-animate">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col modal-content-animate">
+            <div class="swipe-indicator md:hidden"></div>
+            <div class="flex justify-between items-center border-b p-6">
+                <div>
+                    <div class="breadcrumb">
+                        <span>Home</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span>Announcements</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="font-semibold text-blue-600">History</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-blue-600">Announcement History</h3>
+                </div>
+                <button id="close-announcement-history-btn" class="text-gray-500 hover:text-gray-800 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="announcement-history-body">
+                <!-- History loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Assignment History Modal -->
+    <div id="assignment-history-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-[100] hidden items-center justify-center p-4 modal-animate">
+        <div class="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col modal-content-animate">
+            <div class="swipe-indicator md:hidden"></div>
+            <div class="flex justify-between items-center border-b p-6">
+                <div>
+                    <div class="breadcrumb">
+                        <span>Home</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span>Assignments</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="font-semibold text-blue-600">History</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-blue-600">Assignment History</h3>
+                </div>
+                <button id="close-assignment-history-btn" class="text-gray-500 hover:text-gray-800 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="assignment-history-body">
+                <!-- History loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Assignment Details Modal -->
+    <div id="assignment-details-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-[100] hidden items-center justify-center p-4 modal-animate">
+        <div class="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col modal-content-animate">
+            <div class="swipe-indicator md:hidden"></div>
+            <div class="flex justify-between items-center border-b p-6">
+                <div>
+                    <div class="breadcrumb" id="assignment-breadcrumb">
+                        <span>Home</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span>Assignments</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="font-semibold text-blue-600">Details</span>
+                    </div>
+                    <h3 id="assignment-modal-title" class="text-2xl font-bold text-gray-800">Assignment Details</h3>
+                </div>
+                <button id="close-assignment-details-btn" class="text-gray-500 hover:text-gray-800 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="assignment-modal-body">
+                <!-- Details loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Resources Modal -->
+    <div id="subject-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-[100] hidden items-center justify-center p-4 modal-animate">
+        <div class="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col modal-content-animate">
+            <div class="swipe-indicator md:hidden"></div>
+            <div class="flex justify-between items-center border-b p-6">
+                <div class="flex items-center gap-3">
+                    <div id="subject-modal-icon" class="w-12 h-12 rounded-full flex items-center justify-center text-white bg-blue-600"></div>
+                    <div>
+                        <div class="breadcrumb">
+                            <span>Home</span>
+                            <span class="breadcrumb-separator">/</span>
+                            <span>Subjects</span>
+                            <span class="breadcrumb-separator">/</span>
+                            <span class="font-semibold text-blue-600" id="subject-breadcrumb-name">Subject</span>
+                        </div>
+                        <h3 id="subject-modal-title" class="text-2xl font-bold text-gray-800">Subject Name</h3>
+                        <p id="subject-modal-subtitle" class="text-sm text-gray-500">Full Course Name</p>
+                    </div>
+                </div>
+                <button id="close-subject-modal-btn" class="text-gray-500 hover:text-gray-800 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="px-6 py-3 bg-gray-50">
+                <div class="relative">
+                    <input type="text" id="modal-resource-search" placeholder="Search resources in this subject..." 
+                           class="w-full p-2 pl-10 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition text-sm">
+                    <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="subject-modal-body">
+                <!-- Categories loaded dynamically -->
+            </div>
+            <div class="border-t p-6 bg-gray-50">
+                <a id="drive-folder-link" href="#" target="_blank" class="w-full block text-center text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition duration-300 transform hover:scale-105 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700">
+                    <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    Go Directly to Drive Folder
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip for Calendar Events -->
+    <div id="event-tooltip" class="tooltip"></div>
+
+    <!-- Load portal engine with Supabase -->
+    <script src="portal-engine.js"></script>
+</body>
+</html>
