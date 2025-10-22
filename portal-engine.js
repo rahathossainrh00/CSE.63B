@@ -105,11 +105,11 @@ async function loadAllData() {
         
         subjectsData = subjects.map((s, idx) => {
             const colors = [
-                'bg-blue-600', 'bg-purple-600', 'bg-green-600', 
-                'bg-orange-600', 'bg-pink-600', 'bg-indigo-600'
+                'bg-blue-600', 'bg-blue-600', 'bg-blue-600', 
+                'bg-blue-600', 'bg-blue-600', 'bg-blue-600'
             ];
             const icons = [
-                'atom', 'code', 'zap', 'book', 'flask', 'cpu'
+                'atom', 'code', 'zap', 'book', 'terminal', 'cpu'
             ];
             
             let resources = {};
@@ -139,7 +139,7 @@ async function loadAllData() {
                 color: colors[idx % colors.length],
                 icon: icons[idx % icons.length],
                 categories: categories,
-                driveFolder: '#'
+                driveFolder: s.drivefolder || '#'
             };
         });
         
@@ -180,38 +180,145 @@ async function loadAllData() {
             profileImage: ''
         }));
         
-        // Load Schedule
+        // Load Schedule from Supabase (with fallback to static data)
         const { data: schedule, error: scheduleError } = await supabase
             .from('Schedule')
             .select('*')
-            .order('day', { ascending: true });
+            .order('timeslot_index', { ascending: true });
         
-        if (scheduleError) throw scheduleError;
-        
-        // Convert schedule to required format
-        scheduleData = {
-            timeSlots: ['8:00-9:30', '9:30-11:00', '11:00-12:30', '12:30-2:00', '2:00-3:30'],
-            days: [
-                { day: 'Sunday', classes: [], bgColor: 'white' },
-                { day: 'Monday', classes: [], bgColor: 'blue' },
-                { day: 'Tuesday', classes: [], bgColor: 'white' },
-                { day: 'Wednesday', classes: [], bgColor: 'blue' },
-                { day: 'Thursday', classes: [], bgColor: 'white' }
-            ]
-        };
-        
-        // Populate schedule days with actual data
-        schedule.forEach(item => {
-            const dayObj = scheduleData.days.find(d => d.day === item.day);
-            if (dayObj) {
-                dayObj.classes.push({
+        // If Supabase has schedule data, use it
+        if (!scheduleError && schedule && schedule.length > 0) {
+            // Convert schedule to required format with 6 time slots
+            scheduleData = {
+                timeSlots: [
+                    "09:00 AM - 10:15 AM",
+                    "10:15 AM - 11:30 AM",
+                    "11:30 AM - 12:45 PM",
+                    "01:00 PM - 02:15 PM",
+                    "02:15 PM - 03:30 PM",
+                    "03:30 PM - 04:45 PM"
+                ],
+                days: []
+            };
+            
+            // Initialize days structure
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+            dayNames.forEach(dayName => {
+                scheduleData.days.push({
+                    day: dayName,
+                    bgColor: 'white', // Will be set from first entry
+                    classes: [null, null, null, null, null, null] // 6 slots
+                });
+            });
+            
+            // Populate schedule with data from Supabase
+            schedule.forEach(item => {
+                const dayIndex = dayNames.indexOf(item.day);
+                if (dayIndex === -1) return;
+                
+                const dayObj = scheduleData.days[dayIndex];
+                
+                // Set background color from first entry
+                if (dayObj.bgColor === 'white' && item.bgcolor) {
+                    dayObj.bgColor = item.bgcolor;
+                }
+                
+                const slotIndex = item.timeslot_index;
+                if (slotIndex < 0 || slotIndex > 5) return;
+                
+                // Create class entry
+                const classEntry = {
                     name: item.subjectname,
                     instructor: item.teachername,
                     room: item.room,
                     colspan: item.type === 'Lab' ? 2 : 1
-                });
-            }
-        });
+                };
+                
+                dayObj.classes[slotIndex] = classEntry;
+                
+                // If Lab, mark next slot as occupied
+                if (item.type === 'Lab' && slotIndex < 5) {
+                    dayObj.classes[slotIndex + 1] = 'SKIP'; // Placeholder for colspan
+                }
+            });
+            
+            console.log('Schedule loaded from Supabase');
+        } else {
+            // FALLBACK: Use static schedule data if Supabase is empty
+            console.log('No schedule in Supabase, using static fallback data');
+            scheduleData = {
+                timeSlots: [
+                    "09:00 AM - 10:15 AM",
+                    "10:15 AM - 11:30 AM",
+                    "11:30 AM - 12:45 PM",
+                    "01:00 PM - 02:15 PM",
+                    "02:15 PM - 03:30 PM",
+                    "03:30 PM - 04:45 PM"
+                ],
+                days: [
+                    {
+                        day: "SUNDAY",
+                        bgColor: "white",
+                        classes: [
+                            { name: "ENG II", instructor: "NHS", room: "508", colspan: 1 },
+                            { name: "BEE", instructor: "FHR", room: "508", colspan: 1 },
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    },
+                    {
+                        day: "MONDAY",
+                        bgColor: "blue",
+                        classes: [
+                            null,
+                            null,
+                            { name: "PHY II", instructor: "SUA", room: "GL-2", colspan: 1 },
+                            null,
+                            { name: "SP", instructor: "GMN", room: "506", colspan: 1 },
+                            { name: "ENG II", instructor: "NHS", room: "506", colspan: 1 }
+                        ]
+                    },
+                    {
+                        day: "TUESDAY",
+                        bgColor: "white",
+                        classes: [
+                            { name: "BEE Lab", instructor: "FHR", room: "108", colspan: 2 },
+                            'SKIP',
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    },
+                    {
+                        day: "WEDNESDAY",
+                        bgColor: "blue",
+                        classes: [
+                            null,
+                            null,
+                            { name: "PHY II", instructor: "SUA", room: "GL-1", colspan: 1 },
+                            { name: "SP", instructor: "GMN", room: "408", colspan: 1 },
+                            null,
+                            { name: "BEE", instructor: "FHR", room: "502", colspan: 1 }
+                        ]
+                    },
+                    {
+                        day: "THURSDAY",
+                        bgColor: "white",
+                        classes: [
+                            { name: "SP Lab", instructor: "GMN", room: "309", colspan: 2 },
+                            'SKIP',
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                ]
+            };
+        }
         
         console.log('All data loaded successfully');
         
@@ -380,7 +487,7 @@ function createAnnouncementCard(announcement) {
 }
 
 // ============================================
-// ASSIGNMENT CARD GENERATOR (WITH SORTING)
+// ASSIGNMENT CARD GENERATOR
 // ============================================
 
 function createAssignmentCard(assignment) {
@@ -576,7 +683,7 @@ function openAssignmentDetails(assignmentId) {
 }
 
 // ============================================
-// SCHEDULE TABLE GENERATOR
+// SCHEDULE TABLE GENERATOR (FIXED FOR 6 SLOTS)
 // ============================================
 
 function renderSchedule() {
@@ -585,46 +692,49 @@ function renderSchedule() {
     
     if (!scheduleData || !headerRow || !tbody) return;
     
-    let headerHTML = '<th class="py-3 px-4 rounded-tl-xl"></th>';
+    // Create header with Day + 6 time slots
+    let headerHTML = '<th class="py-3 px-4 rounded-tl-xl">Day</th>';
     scheduleData.timeSlots.forEach((slot, index) => {
         const roundClass = index === scheduleData.timeSlots.length - 1 ? 'rounded-tr-xl' : '';
-        headerHTML += `<th class="py-3 px-4 ${roundClass}">${slot}</th>`;
+        headerHTML += `<th class="py-3 px-2 text-xs sm:text-sm ${roundClass}">${slot}</th>`;
     });
     headerRow.innerHTML = headerHTML;
     
+    // Create rows for each day
     let bodyHTML = '';
     scheduleData.days.forEach(dayData => {
         const bgClass = dayData.bgColor === "blue" ? "bg-blue-50" : "bg-white";
         bodyHTML += `<tr class="${bgClass} rounded-xl shadow-md">`;
-        bodyHTML += `<td class="font-bold text-blue-600 py-4 px-3 rounded-l-xl">${dayData.day}</td>`;
+        bodyHTML += `<td class="font-bold text-blue-600 py-4 px-3 rounded-l-xl text-sm sm:text-base">${dayData.day}</td>`;
         
-        let skipNext = 0;
-        dayData.classes.forEach((classData, index) => {
-            if (skipNext > 0) {
-                skipNext--;
-                return;
-            }
-            
-            const isLast = index === dayData.classes.length - 1;
+        // Process all 6 time slots
+        for (let i = 0; i < 6; i++) {
+            const classData = dayData.classes[i];
+            const isLast = i === 5;
             const roundClass = isLast ? 'rounded-r-xl' : '';
             
+            // Skip if this slot is part of a lab (marked as 'SKIP')
+            if (classData === 'SKIP') {
+                continue;
+            }
+            
+            // Empty slot
             if (classData === null) {
-                bodyHTML += `<td class="py-3 ${roundClass}"></td>`;
-            } else {
+                bodyHTML += `<td class="py-3 px-2 ${roundClass}"></td>`;
+            } 
+            // Class slot
+            else {
                 const colspanAttr = classData.colspan > 1 ? `colspan="${classData.colspan}"` : '';
-                if (classData.colspan > 1) {
-                    skipNext = classData.colspan - 1;
-                }
                 
-                bodyHTML += `<td class="py-3 ${roundClass}" ${colspanAttr}>
+                bodyHTML += `<td class="py-3 px-2 ${roundClass}" ${colspanAttr}>
                     <div class="bg-white border-2 border-blue-600 rounded-xl shadow-md p-2 w-11/12 mx-auto">
-                        <p class="font-bold text-blue-600">${classData.name}</p>
+                        <p class="font-bold text-blue-600 text-xs sm:text-sm">${classData.name}</p>
                         <p class="italic text-blue-800 text-xs">${classData.instructor}</p>
-                        <p class="text-xs">(${classData.room})</p>
+                        <p class="text-xs text-gray-600">(${classData.room})</p>
                     </div>
                 </td>`;
             }
-        });
+        }
         
         bodyHTML += '</tr>';
     });
