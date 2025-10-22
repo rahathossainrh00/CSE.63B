@@ -1,8 +1,6 @@
 // ============================================
-// 🔧 ADMIN PANEL - FIXED VERSION
+// 🔧 ADMIN PANEL - COMPLETE VERSION
 // ============================================
-
-import { supabase, getCurrentUser, signIn, signOut, onAuthStateChange } from './supabaseClient.js';
 
 // Global state
 let currentUser = null;
@@ -10,14 +8,42 @@ let currentSection = 'calendar';
 let editingItem = null;
 let allSubjects = [];
 
+// Time slots mapping
+const TIME_SLOTS = [
+    { index: 0, time: "09:00 AM - 10:15 AM", start: "09:00 AM" },
+    { index: 1, time: "10:15 AM - 11:30 AM", start: "10:15 AM" },
+    { index: 2, time: "11:30 AM - 12:45 PM", start: "11:30 AM" },
+    { index: 3, time: "01:00 PM - 02:15 PM", start: "01:00 PM" },
+    { index: 4, time: "02:15 PM - 03:30 PM", start: "02:15 PM" },
+    { index: 5, time: "03:30 PM - 04:45 PM", start: "03:30 PM" }
+];
+
+// Tag colors for announcements
+const ANNOUNCEMENT_TAG_COLORS = [
+    { name: 'Blue', class: 'bg-blue-100 text-blue-800 border-blue-300' },
+    { name: 'Red', class: 'bg-red-100 text-red-800 border-red-300' },
+    { name: 'Green', class: 'bg-green-100 text-green-800 border-green-300' },
+    { name: 'Orange', class: 'bg-orange-100 text-orange-800 border-orange-300' }
+];
+
+// Category colors for assignments
+const ASSIGNMENT_CATEGORY_COLORS = [
+    { name: 'Blue', class: 'bg-blue-100 text-blue-700' },
+    { name: 'Purple', class: 'bg-purple-100 text-purple-700' },
+    { name: 'Green', class: 'bg-green-100 text-green-700' },
+    { name: 'Pink', class: 'bg-pink-100 text-pink-700' }
+];
+
 // ============================================
 // 🚀 INITIALIZATION
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkAuth();
-    setupEventListeners();
-    setupAuthListener();
+    setTimeout(async () => {
+        await checkAuth();
+        setupEventListeners();
+        setupAuthListener();
+    }, 200);
 });
 
 async function checkAuth() {
@@ -158,7 +184,7 @@ function hideToast() {
 }
 
 // ============================================
-// 🔑 AUTH FUNCTIONS
+// 🔐 AUTH FUNCTIONS
 // ============================================
 
 function setupEventListeners() {
@@ -320,10 +346,13 @@ async function loadAnnouncements() {
 function createAnnouncementCard(announcement) {
     const div = document.createElement('div');
     div.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition';
+    
+    const tagColor = announcement.tagcolor || 'bg-blue-100 text-blue-800 border-blue-300';
+    
     div.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex-1">
-                <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 mb-2">
+                <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full border ${tagColor} mb-2">
                     ${announcement.category}
                 </span>
                 <h3 class="text-lg font-bold text-gray-800 mb-2">${announcement.title}</h3>
@@ -372,6 +401,7 @@ function createAssignmentCard(assignment) {
     const div = document.createElement('div');
     div.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition';
     
+    const categoryColor = assignment.categorycolor || 'bg-blue-100 text-blue-700';
     const links = assignment.relatedlinks ? (typeof assignment.relatedlinks === 'string' ? JSON.parse(assignment.relatedlinks) : assignment.relatedlinks) : [];
     const linksHtml = Array.isArray(links) && links.length > 0 ? 
         `<div class="mt-2"><span class="text-xs text-gray-500">${links.length} related link(s)</span></div>` : '';
@@ -383,13 +413,13 @@ function createAssignmentCard(assignment) {
                     <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                         ${assignment.subjectname || 'N/A'}
                     </span>
-                    <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                    <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${categoryColor}">
                         ${assignment.category || 'N/A'}
                     </span>
                 </div>
                 <h3 class="text-lg font-bold text-gray-800 mb-2">${assignment.title}</h3>
                 <p class="text-gray-600 text-sm mb-2">${assignment.description}</p>
-                <div class="text-sm text-red-600 font-medium">Due: ${new Date(assignment.deadline).toLocaleString()}</div>
+                <div class="text-sm text-red-600 font-medium">Due: ${new Date(assignment.deadline).toLocaleDateString()}</div>
                 ${linksHtml}
             </div>
             <div class="flex gap-2 ml-4">
@@ -453,7 +483,7 @@ function createSubjectCard(subject) {
                 </div>
                 <h3 class="text-lg font-bold text-gray-800 mb-1">${subject.subjectname}</h3>
                 <p class="text-gray-600 text-sm mb-2">${subject.teachername || 'N/A'}</p>
-                <div class="text-xs text-gray-500">${resourceCount} resource(s)</div>
+                <div class="text-xs text-gray-500">${resourceCount} resource(s) in ${Object.keys(resources).length} categories</div>
             </div>
             <div class="flex gap-2 ml-4">
                 <button onclick="editItem('subjects', ${subject.id})" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 text-sm font-medium transition">
@@ -476,7 +506,8 @@ async function loadSchedule() {
     const { data, error } = await supabase
         .from('Schedule')
         .select('*')
-        .order('day', { ascending: true });
+        .order('day', { ascending: true })
+        .order('timeslot_index', { ascending: true });
     
     if (error) throw error;
     
@@ -497,6 +528,10 @@ async function loadSchedule() {
 function createScheduleCard(schedule) {
     const div = document.createElement('div');
     div.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition';
+    
+    const timeSlot = TIME_SLOTS.find(slot => slot.index === schedule.timeslot_index);
+    const timeDisplay = timeSlot ? timeSlot.time : schedule.starttime;
+    
     div.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex-1">
@@ -512,7 +547,7 @@ function createScheduleCard(schedule) {
                 <div class="text-gray-600 text-sm space-y-1">
                     <div>Teacher: ${schedule.teachername}</div>
                     <div>Room: ${schedule.room}</div>
-                    <div>Time: ${schedule.starttime}</div>
+                    <div>Time: ${timeDisplay}</div>
                 </div>
             </div>
             <div class="flex gap-2 ml-4">
@@ -582,7 +617,7 @@ function createContactCard(contact) {
 }
 
 // ============================================
-// ✏️ MODAL FUNCTIONS (Continued in next response...)
+// ✏️ MODAL & FORM FUNCTIONS
 // ============================================
 
 function openAddModal(section) {
@@ -596,6 +631,13 @@ function openAddModal(section) {
     
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    
+    // Initialize dynamic forms
+    if (section === 'subjects') {
+        initSubjectResourceForm();
+    } else if (section === 'assignments') {
+        initAssignmentLinksForm();
+    }
 }
 
 async function editItem(section, id) {
@@ -625,6 +667,13 @@ async function editItem(section, id) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     showLoading(false);
+    
+    // Initialize dynamic forms
+    if (section === 'subjects') {
+        initSubjectResourceForm();
+    } else if (section === 'assignments') {
+        initAssignmentLinksForm();
+    }
 }
 
 function getTableName(section) {
@@ -664,12 +713,24 @@ function getFormFields(section, data) {
             break;
             
         case 'announcements':
+            // Build tag color dropdown
+            const announcementColorOptions = ANNOUNCEMENT_TAG_COLORS.map(color => 
+                `<option value="${color.class}" ${data?.tagcolor === color.class ? 'selected' : ''}>${color.name}</option>`
+            ).join('');
+            
             fields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
                     <input type="text" id="field-category" value="${data?.category || ''}" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="e.g., Important, Assignment, General">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tag Color</label>
+                    <select id="field-tagcolor" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        ${announcementColorOptions}
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
@@ -685,8 +746,10 @@ function getFormFields(section, data) {
             break;
             
         case 'assignments':
-            const links = data?.relatedlinks ? (typeof data.relatedlinks === 'string' ? JSON.parse(data.relatedlinks) : data.relatedlinks) : [];
-            const linksText = Array.isArray(links) ? links.join('\n') : '';
+            // Build category color dropdown
+            const categoryColorOptions = ASSIGNMENT_CATEGORY_COLORS.map(color => 
+                `<option value="${color.class}" ${data?.categorycolor === color.class ? 'selected' : ''}>${color.name}</option>`
+            ).join('');
             
             fields = `
                 <div>
@@ -701,6 +764,13 @@ function getFormFields(section, data) {
                            placeholder="e.g., Assignment, Project, Presentation">
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category Color</label>
+                    <select id="field-categorycolor" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        ${categoryColorOptions}
+                    </select>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
                     <input type="text" id="field-title" value="${data?.title || ''}" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -712,22 +782,22 @@ function getFormFields(section, data) {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-                    <input type="date" id="field-deadline" value="${data?.deadline || ''}" required
+                    <input type="datetime-local" id="field-deadline" value="${data?.deadline ? data.deadline.slice(0, 16) : ''}" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Related Links (one per line)</label>
-                    <textarea id="field-relatedlinks" rows="3"
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                              placeholder="https://example.com&#10;https://another.com">${linksText}</textarea>
-                    <p class="text-xs text-gray-500 mt-1">Enter each URL on a new line</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Related Links</label>
+                    <div id="assignment-links-container" class="space-y-2 mb-2">
+                        <!-- Dynamic links will be added here -->
+                    </div>
+                    <button type="button" onclick="addAssignmentLink()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        + Add Link
+                    </button>
                 </div>
             `;
             break;
             
         case 'subjects':
-            const resources = data?.resources || {};
-            const resourcesJson = JSON.stringify(resources, null, 2);
             fields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
@@ -753,16 +823,34 @@ function getFormFields(section, data) {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Resources (JSON format)</label>
-                    <textarea id="field-resources" rows="8"
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                              placeholder='{"Books": [{"title": "Book 1", "url": "https://..."}]}'>${resourcesJson}</textarea>
-                    <p class="text-xs text-gray-500 mt-1">Format: {"CategoryName": [{"title": "File Name", "url": "https://..."}]}</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Drive Folder Link</label>
+                    <input type="url" id="field-drivefolder" value="${data?.drivefolder || ''}" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="https://drive.google.com/...">
+                    <p class="text-xs text-gray-500 mt-1">Link to the main Google Drive folder for this subject</p>
+                </div>
+                <div class="border-t pt-4 mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Resources</label>
+                    <div id="subject-resources-container" class="space-y-4">
+                        <!-- Dynamic categories will be added here -->
+                    </div>
+                    <button type="button" onclick="addSubjectCategory()" class="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        + Add Category
+                    </button>
                 </div>
             `;
             break;
             
         case 'schedule':
+            let selectedSlotIndex = 0;
+            if (data?.timeslot_index !== undefined) {
+                selectedSlotIndex = data.timeslot_index;
+            }
+            
+            const timeSlotOptions = TIME_SLOTS.map(slot => 
+                `<option value="${slot.index}" ${selectedSlotIndex === slot.index ? 'selected' : ''}>${slot.time}</option>`
+            ).join('');
+            
             fields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Day</label>
@@ -776,6 +864,14 @@ function getFormFields(section, data) {
                         <option value="Friday" ${data?.day === 'Friday' ? 'selected' : ''}>Friday</option>
                         <option value="Saturday" ${data?.day === 'Saturday' ? 'selected' : ''}>Saturday</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Time Slot</label>
+                    <select id="field-timeslot" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        ${timeSlotOptions}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Select the time slot for this class</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
@@ -793,16 +889,19 @@ function getFormFields(section, data) {
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-                    <input type="time" id="field-starttime" value="${data?.starttime || ''}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
                     <select id="field-type" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         <option value="Theory" ${data?.type === 'Theory' ? 'selected' : ''}>Theory</option>
-                        <option value="Lab" ${data?.type === 'Lab' ? 'selected' : ''}>Lab</option>
+                        <option value="Lab" ${data?.type === 'Lab' ? 'selected' : ''}>Lab (spans 2 slots)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                    <select id="field-bgcolor" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="white" ${data?.bgcolor === 'white' ? 'selected' : ''}>White</option>
+                        <option value="blue" ${data?.bgcolor === 'blue' ? 'selected' : ''}>Blue</option>
                     </select>
                 </div>
             `;
@@ -840,6 +939,157 @@ function getFormFields(section, data) {
     }
     
     return fields;
+}
+
+// ============================================
+// 📚 SUBJECT RESOURCES DYNAMIC FORM
+// ============================================
+
+function initSubjectResourceForm() {
+    const container = document.getElementById('subject-resources-container');
+    if (!container) return;
+    
+    // Load existing resources if editing
+    const resources = editingItem?.resources || {};
+    
+    if (Object.keys(resources).length === 0) {
+        // Add one empty category by default
+        addSubjectCategory();
+    } else {
+        // Load existing categories
+        Object.keys(resources).forEach(categoryName => {
+            const files = resources[categoryName] || [];
+            addSubjectCategory(categoryName, files);
+        });
+    }
+}
+
+function addSubjectCategory(categoryName = '', files = []) {
+    const container = document.getElementById('subject-resources-container');
+    const categoryIndex = container.children.length;
+    
+    const categoryDiv = document.createElement('div');
+    categoryDiv.className = 'border border-gray-300 rounded-lg p-4 bg-gray-50';
+    categoryDiv.dataset.categoryIndex = categoryIndex;
+    
+    categoryDiv.innerHTML = `
+        <div class="flex justify-between items-center mb-3">
+            <input type="text" class="category-name flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                   placeholder="Category Name (e.g., Books, Slides)" value="${categoryName}" required>
+            <button type="button" onclick="removeSubjectCategory(${categoryIndex})" 
+                    class="ml-2 text-red-600 hover:text-red-800 px-3 py-2 rounded bg-red-50 hover:bg-red-100">
+                Remove
+            </button>
+        </div>
+        <div class="files-container space-y-2 mb-2" data-category="${categoryIndex}">
+            <!-- Files will be added here -->
+        </div>
+        <button type="button" onclick="addSubjectFile(${categoryIndex})" 
+                class="text-sm text-green-600 hover:text-green-800 font-medium">
+            + Add File
+        </button>
+    `;
+    
+    container.appendChild(categoryDiv);
+    
+    // Add existing files or one empty file
+    if (files.length === 0) {
+        addSubjectFile(categoryIndex);
+    } else {
+        files.forEach(file => {
+            addSubjectFile(categoryIndex, file.title || file.name || '', file.url || file.link || '');
+        });
+    }
+}
+
+function addSubjectFile(categoryIndex, fileName = '', fileUrl = '') {
+    const filesContainer = document.querySelector(`.files-container[data-category="${categoryIndex}"]`);
+    if (!filesContainer) return;
+    
+    const fileIndex = filesContainer.children.length;
+    
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'flex gap-2 items-center file-entry';
+    fileDiv.dataset.fileIndex = fileIndex;
+    
+    fileDiv.innerHTML = `
+        <input type="text" class="file-name flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+               placeholder="File Name" value="${fileName}" required>
+        <input type="url" class="file-url flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+               placeholder="File URL (https://...)" value="${fileUrl}" required>
+        <button type="button" onclick="removeSubjectFile(this)" 
+                class="text-red-600 hover:text-red-800 text-sm px-2 py-2">
+            ✕
+        </button>
+    `;
+    
+    filesContainer.appendChild(fileDiv);
+}
+
+function removeSubjectCategory(categoryIndex) {
+    const container = document.getElementById('subject-resources-container');
+    const categoryDiv = container.querySelector(`[data-category-index="${categoryIndex}"]`);
+    if (categoryDiv) {
+        categoryDiv.remove();
+    }
+}
+
+function removeSubjectFile(button) {
+    button.closest('.file-entry').remove();
+}
+
+// ============================================
+// 📝 ASSIGNMENT LINKS DYNAMIC FORM
+// ============================================
+
+function initAssignmentLinksForm() {
+    const container = document.getElementById('assignment-links-container');
+    if (!container) return;
+    
+    // Load existing links if editing
+    let links = [];
+    if (editingItem?.relatedlinks) {
+        try {
+            links = typeof editingItem.relatedlinks === 'string' 
+                ? JSON.parse(editingItem.relatedlinks) 
+                : editingItem.relatedlinks;
+        } catch (e) {
+            console.error('Error parsing links:', e);
+        }
+    }
+    
+    if (links.length === 0) {
+        // Add one empty link by default
+        addAssignmentLink();
+    } else {
+        // Load existing links
+        links.forEach(link => {
+            addAssignmentLink(link);
+        });
+    }
+}
+
+function addAssignmentLink(linkUrl = '') {
+    const container = document.getElementById('assignment-links-container');
+    if (!container) return;
+    
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'flex gap-2 items-center link-entry';
+    
+    linkDiv.innerHTML = `
+        <input type="url" class="link-url flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+               placeholder="Enter URL (https://...)" value="${linkUrl}">
+        <button type="button" onclick="removeAssignmentLink(this)" 
+                class="text-red-600 hover:text-red-800 text-sm px-2 py-2">
+            ✕
+        </button>
+    `;
+    
+    container.appendChild(linkDiv);
+}
+
+function removeAssignmentLink(button) {
+    button.closest('.link-entry').remove();
 }
 
 // ============================================
@@ -896,18 +1146,23 @@ function getFormData(section) {
         case 'announcements':
             formData = {
                 category: document.getElementById('field-category').value,
+                tagcolor: document.getElementById('field-tagcolor').value,
                 title: document.getElementById('field-title').value,
                 description: document.getElementById('field-description').value
             };
             break;
             
         case 'assignments':
-            const linksText = document.getElementById('field-relatedlinks').value;
-            const links = linksText.split('\n').filter(line => line.trim() !== '');
+            // Collect all links
+            const linkInputs = document.querySelectorAll('.link-url');
+            const links = Array.from(linkInputs)
+                .map(input => input.value.trim())
+                .filter(link => link !== '');
             
             formData = {
                 subjectname: document.getElementById('field-subjectname').value,
                 category: document.getElementById('field-category').value,
+                categorycolor: document.getElementById('field-categorycolor').value,
                 title: document.getElementById('field-title').value,
                 description: document.getElementById('field-description').value,
                 deadline: document.getElementById('field-deadline').value,
@@ -916,15 +1171,35 @@ function getFormData(section) {
             break;
             
         case 'subjects':
-            const resourcesText = document.getElementById('field-resources').value;
-            let resources = {};
+            // Collect all categories and their files
+            const resources = {};
+            const categoryDivs = document.querySelectorAll('[data-category-index]');
             
-            try {
-                resources = resourcesText.trim() ? JSON.parse(resourcesText) : {};
-            } catch (e) {
-                showToast('Invalid JSON format for resources. Please check the format.', 'error');
-                throw new Error('Invalid JSON');
-            }
+            categoryDivs.forEach(categoryDiv => {
+                const categoryNameInput = categoryDiv.querySelector('.category-name');
+                const categoryName = categoryNameInput.value.trim();
+                
+                if (categoryName) {
+                    const fileEntries = categoryDiv.querySelectorAll('.file-entry');
+                    const files = [];
+                    
+                    fileEntries.forEach(fileEntry => {
+                        const fileName = fileEntry.querySelector('.file-name').value.trim();
+                        const fileUrl = fileEntry.querySelector('.file-url').value.trim();
+                        
+                        if (fileName && fileUrl) {
+                            files.push({
+                                title: fileName,
+                                url: fileUrl
+                            });
+                        }
+                    });
+                    
+                    if (files.length > 0) {
+                        resources[categoryName] = files;
+                    }
+                }
+            });
             
             formData = {
                 subjectname: document.getElementById('field-subjectname').value,
@@ -936,13 +1211,18 @@ function getFormData(section) {
             break;
             
         case 'schedule':
+            const timeslotIndex = parseInt(document.getElementById('field-timeslot').value);
+            const timeSlot = TIME_SLOTS.find(slot => slot.index === timeslotIndex);
+            
             formData = {
                 day: document.getElementById('field-day').value,
                 subjectname: document.getElementById('field-subjectname').value,
                 teachername: document.getElementById('field-teachername').value,
                 room: document.getElementById('field-room').value,
-                starttime: document.getElementById('field-starttime').value,
-                type: document.getElementById('field-type').value
+                starttime: timeSlot ? timeSlot.start : '',
+                timeslot_index: timeslotIndex,
+                type: document.getElementById('field-type').value,
+                bgcolor: document.getElementById('field-bgcolor').value
             };
             break;
             
@@ -992,14 +1272,18 @@ async function deleteItem(section, id) {
 }
 
 // ============================================
-// 📤 EXPORT ALL FUNCTIONS TO WINDOW
+// 🌐 MAKE FUNCTIONS GLOBALLY ACCESSIBLE
 // ============================================
 
 window.openEditor = openEditor;
 window.closeEditor = closeEditor;
+window.closeForm = closeForm;
 window.editItem = editItem;
 window.deleteItem = deleteItem;
-window.openAddModal = openAddModal;
-window.closeForm = closeForm;
 window.saveItem = saveItem;
-window.hideToast = hideToast;
+window.addSubjectCategory = addSubjectCategory;
+window.addSubjectFile = addSubjectFile;
+window.removeSubjectCategory = removeSubjectCategory;
+window.removeSubjectFile = removeSubjectFile;
+window.addAssignmentLink = addAssignmentLink;
+window.removeAssignmentLink = removeAssignmentLink;
