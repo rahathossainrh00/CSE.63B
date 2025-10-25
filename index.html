@@ -373,23 +373,34 @@
                 <p class="mt-2 text-xl sm:text-2xl font-semibold" style="color: var(--primary-blue);">Web Portal</p>
                 
                 <!-- NEW: Weekly Statistics -->
-                <div class="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 max-w-2xl mx-auto border border-blue-200">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">This Week You Have:</h3>
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-blue-600" id="weekly-events">0</div>
-                            <div class="text-sm text-gray-600 mt-1">Events</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-purple-600" id="weekly-tests">0</div>
-                            <div class="text-sm text-gray-600 mt-1">Tests</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600" id="weekly-assignments">0</div>
-                            <div class="text-sm text-gray-600 mt-1">Assignments</div>
-                        </div>
-                    </div>
-                </div>
+<div class="mt-8 mb-6">
+    <h3 class="text-lg font-semibold text-gray-700 mb-4">This week you have</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+        <div class="stat-card bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6 shadow-md">
+            <div class="flex items-center justify-center mb-2">
+                <i data-lucide="calendar" class="w-8 h-8 text-blue-600"></i>
+            </div>
+            <div id="weekly-events-count" class="text-3xl font-bold text-blue-600">0</div>
+            <div class="text-sm text-gray-600 mt-1">Events</div>
+        </div>
+        
+        <div class="stat-card bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-6 shadow-md">
+            <div class="flex items-center justify-center mb-2">
+                <i data-lucide="alert-circle" class="w-8 h-8 text-purple-600"></i>
+            </div>
+            <div id="weekly-tests-count" class="text-3xl font-bold text-purple-600">0</div>
+            <div class="text-sm text-gray-600 mt-1">Tests</div>
+        </div>
+        
+        <div class="stat-card bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-xl p-6 shadow-md">
+            <div class="flex items-center justify-center mb-2">
+                <i data-lucide="clipboard-list" class="w-8 h-8 text-green-600"></i>
+            </div>
+            <div id="weekly-assignments-count" class="text-3xl font-bold text-green-600">0</div>
+            <div class="text-sm text-gray-600 mt-1">Assignments</div>
+        </div>
+    </div>
+</div>
                 
                 <div class="mt-6">
                     <button id="open-calendar-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg">
