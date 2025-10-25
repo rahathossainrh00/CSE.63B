@@ -50,20 +50,36 @@ function calculateWeeklyStats() {
     thursday.setDate(sunday.getDate() + 4); // Thursday is 4 days after Sunday
     thursday.setHours(23, 59, 59, 999);
     
-    console.log('Week range:', sunday, 'to', thursday);
+    console.log('=== WEEKLY STATS DEBUG ===');
+    console.log('Today:', now.toDateString());
+    console.log('Week range:', sunday.toDateString(), 'to', thursday.toDateString());
     
-    // Count events from Calendar (category = "Events")
+    // Count events from Calendar
     let eventsCount = 0;
+    console.log('\n--- Calendar Events ---');
+    console.log('Total calendar dates:', Object.keys(calendarEvents).length);
+    
     Object.keys(calendarEvents).forEach(dateStr => {
         const eventDate = new Date(dateStr);
+        console.log('Checking date:', dateStr, 'EventDate:', eventDate.toDateString());
+        
         if (eventDate >= sunday && eventDate <= thursday) {
             const events = calendarEvents[dateStr];
+            console.log('  → Date is in this week! Events:', events);
+            
             events.forEach(event => {
+                console.log('    Event:', event.title, 'Category:', event.category);
                 // Check if category is "Events" (case insensitive)
-                if (event.category && event.category.toLowerCase() === 'events') {
+                const category = (event.category || '').toLowerCase().trim();
+                if (category === 'events') {
                     eventsCount++;
+                    console.log('    ✓ COUNTED as Event');
+                } else {
+                    console.log('    ✗ Not counted (category is:', event.category, ')');
                 }
             });
+        } else {
+            console.log('  → Date NOT in this week (skipped)');
         }
     });
     
@@ -71,19 +87,36 @@ function calculateWeeklyStats() {
     let testsCount = 0;
     let assignmentsCount = 0;
     
+    console.log('\n--- Assignments ---');
+    console.log('Total assignments:', assignmentsData.length);
+    
     assignmentsData.forEach(assignment => {
         const deadline = new Date(assignment.deadline);
+        console.log('Assignment:', assignment.title, 'Deadline:', deadline.toDateString(), 'Category:', assignment.type);
+        
         if (deadline >= sunday && deadline <= thursday) {
-            const category = assignment.type.toLowerCase();
+            console.log('  → Deadline is in this week!');
+            const category = (assignment.type || '').toLowerCase().trim();
+            
             if (category === 'test') {
                 testsCount++;
+                console.log('    ✓ COUNTED as Test');
             } else if (category === 'assignment') {
                 assignmentsCount++;
+                console.log('    ✓ COUNTED as Assignment');
+            } else {
+                console.log('    ✗ Not counted (category is:', assignment.type, ')');
             }
+        } else {
+            console.log('  → Deadline NOT in this week (skipped)');
         }
     });
     
-    console.log('Weekly stats:', { events: eventsCount, tests: testsCount, assignments: assignmentsCount });
+    console.log('\n=== FINAL COUNTS ===');
+    console.log('Events:', eventsCount);
+    console.log('Tests:', testsCount);
+    console.log('Assignments:', assignmentsCount);
+    console.log('======================\n');
     
     return {
         events: eventsCount,
@@ -93,15 +126,41 @@ function calculateWeeklyStats() {
 }
 
 function updateWeeklyStats() {
+    console.log('updateWeeklyStats() called');
+    
     const stats = calculateWeeklyStats();
     
     const eventsElement = document.getElementById('weekly-events-count');
     const testsElement = document.getElementById('weekly-tests-count');
     const assignmentsElement = document.getElementById('weekly-assignments-count');
     
-    if (eventsElement) eventsElement.textContent = stats.events;
-    if (testsElement) testsElement.textContent = stats.tests;
-    if (assignmentsElement) assignmentsElement.textContent = stats.assignments;
+    console.log('Updating DOM elements...');
+    console.log('Events element:', eventsElement);
+    console.log('Tests element:', testsElement);
+    console.log('Assignments element:', assignmentsElement);
+    
+    if (eventsElement) {
+        eventsElement.textContent = stats.events;
+        console.log('✓ Events updated to:', stats.events);
+    } else {
+        console.error('✗ Could not find element: weekly-events-count');
+    }
+    
+    if (testsElement) {
+        testsElement.textContent = stats.tests;
+        console.log('✓ Tests updated to:', stats.tests);
+    } else {
+        console.error('✗ Could not find element: weekly-tests-count');
+    }
+    
+    if (assignmentsElement) {
+        assignmentsElement.textContent = stats.assignments;
+        console.log('✓ Assignments updated to:', stats.assignments);
+    } else {
+        console.error('✗ Could not find element: weekly-assignments-count');
+    }
+    
+    console.log('updateWeeklyStats() complete\n');
 }
 
 // ============================================
