@@ -163,6 +163,37 @@
             border: 3px solid #fbbf24;
         }
         
+        /* Weekend styling for calendar days - RED TEXT ONLY */
+        .calendar-day.weekend-day {
+            color: #dc2626 !important;
+            font-weight: 600;
+        }
+        
+        .calendar-day.weekend-day:hover {
+            background-color: #fee2e2;
+        }
+        
+        /* Event color classes for calendar */
+        .calendar-day.has-event-purple {
+            background-color: #9333ea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .calendar-day.has-event-purple:hover {
+            background-color: #7c3aed;
+        }
+        
+        .calendar-day.has-event-red {
+            background-color: #dc2626;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .calendar-day.has-event-red:hover {
+            background-color: #b91c1c;
+        }
+        
         .tooltip {
             position: absolute;
             z-index: 1000;
@@ -279,11 +310,19 @@
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 50;
+            opacity: 0;
+            pointer-events: none;
         }
         
         .fab:hover {
             transform: scale(1.1);
             box-shadow: 0 6px 16px rgba(37, 99, 235, 0.6);
+        }
+        
+        /* Admin button always visible */
+        .fab.admin-fab {
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
     </style>
 </head>
@@ -327,10 +366,30 @@
 
     <main class="max-w-7xl mx-auto">
         
+        <!-- UPDATED: Home section with weekly statistics -->
         <section id="home" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
             <div class="text-center pb-8">
                 <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold text-gray-800 leading-none">CSE 63B</h1>
                 <p class="mt-2 text-xl sm:text-2xl font-semibold" style="color: var(--primary-blue);">Web Portal</p>
+                
+                <!-- NEW: Weekly Statistics -->
+                <div class="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 max-w-2xl mx-auto border border-blue-200">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">This Week You Have:</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600" id="weekly-events">0</div>
+                            <div class="text-sm text-gray-600 mt-1">Events</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600" id="weekly-tests">0</div>
+                            <div class="text-sm text-gray-600 mt-1">Tests</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600" id="weekly-assignments">0</div>
+                            <div class="text-sm text-gray-600 mt-1">Assignments</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="mt-6">
                     <button id="open-calendar-btn" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg">
@@ -369,18 +428,6 @@
                 <!-- Stats loaded dynamically -->
             </div>
             
-            <div class="flex flex-wrap gap-3 mb-6">
-                <button onclick="filterAssignments('all')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition">
-                    All
-                </button>
-                <button onclick="filterAssignments('assignment')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
-                    Assignments
-                </button>
-                <button onclick="filterAssignments('presentation')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
-                    Presentations
-                </button>
-            </div>
-            
             <div id="assignments-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Assignments loaded from Supabase -->
             </div>
@@ -405,10 +452,7 @@
                 </button>
             </div>
             
-            <div class="overflow-x-auto p-2 relative">
-                <div class="scroll-indicator md:hidden">
-                    <i data-lucide="chevron-right" class="w-6 h-6 text-gray-400"></i>
-                </div>
+            <div class="overflow-x-auto">
                 <table id="schedule-table" class="min-w-full text-center text-gray-800 schedule-table">
                     <thead>
                         <tr id="schedule-header" class="text-xs sm:text-sm font-semibold text-white rounded-t-xl" style="background-color: var(--primary-blue);"></tr>
@@ -416,7 +460,9 @@
                     <tbody id="schedule-body" class="text-sm"></tbody>
                 </table>
             </div>
-            <p class="text-sm text-gray-500 max-w-6xl mx-auto text-center mt-4">Note: Lab sessions span two time slots.</p>
+            <p class="text-sm text-gray-500 max-w-6xl mx-auto text-center mt-4">
+                Note: Lab sessions span two time slots. Scroll horizontally on mobile to see full schedule.
+            </p>
         </section>
 
         <section id="subjects" class="section-padding bg-white shadow-lg rounded-xl mt-6 mx-4">
@@ -443,8 +489,14 @@
 
     </main>
 
+    <!-- Floating Action Buttons -->
     <div class="fab" id="scroll-to-top" title="Scroll to top">
         <i data-lucide="arrow-up" class="w-6 h-6"></i>
+    </div>
+
+    <!-- UPDATED: Admin button with admin-fab class for always visible -->
+    <div class="fab admin-fab" id="admin-button" title="Admin Panel" style="bottom: 96px;">
+        <i data-lucide="settings" class="w-6 h-6"></i>
     </div>
 
     <!-- Calendar Modal -->
