@@ -1,5 +1,5 @@
 // ============================================
-// 🚀 PORTAL ENGINE - SUPABASE VERSION
+// 🚀 PORTAL ENGINE - SUPABASE VERSION (FIXED)
 // ============================================
 
 // Supabase Configuration
@@ -34,6 +34,77 @@ function initSupabase() {
 }
 
 // ============================================
+// WEEKLY STATISTICS CALCULATION (FIXED)
+// ============================================
+
+function calculateWeeklyStats() {
+    const now = new Date();
+    
+    // Get current week's Sunday and Thursday
+    const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - currentDay);
+    sunday.setHours(0, 0, 0, 0);
+    
+    const thursday = new Date(sunday);
+    thursday.setDate(sunday.getDate() + 4); // Thursday is 4 days after Sunday
+    thursday.setHours(23, 59, 59, 999);
+    
+    console.log('Week range:', sunday, 'to', thursday);
+    
+    // Count events from Calendar (category = "Events")
+    let eventsCount = 0;
+    Object.keys(calendarEvents).forEach(dateStr => {
+        const eventDate = new Date(dateStr);
+        if (eventDate >= sunday && eventDate <= thursday) {
+            const events = calendarEvents[dateStr];
+            events.forEach(event => {
+                // Check if category is "Events" (case insensitive)
+                if (event.category && event.category.toLowerCase() === 'events') {
+                    eventsCount++;
+                }
+            });
+        }
+    });
+    
+    // Count tests and assignments from Assignments table
+    let testsCount = 0;
+    let assignmentsCount = 0;
+    
+    assignmentsData.forEach(assignment => {
+        const deadline = new Date(assignment.deadline);
+        if (deadline >= sunday && deadline <= thursday) {
+            const category = assignment.type.toLowerCase();
+            if (category === 'test') {
+                testsCount++;
+            } else if (category === 'assignment') {
+                assignmentsCount++;
+            }
+        }
+    });
+    
+    console.log('Weekly stats:', { events: eventsCount, tests: testsCount, assignments: assignmentsCount });
+    
+    return {
+        events: eventsCount,
+        tests: testsCount,
+        assignments: assignmentsCount
+    };
+}
+
+function updateWeeklyStats() {
+    const stats = calculateWeeklyStats();
+    
+    const eventsElement = document.getElementById('weekly-events-count');
+    const testsElement = document.getElementById('weekly-tests-count');
+    const assignmentsElement = document.getElementById('weekly-assignments-count');
+    
+    if (eventsElement) eventsElement.textContent = stats.events;
+    if (testsElement) testsElement.textContent = stats.tests;
+    if (assignmentsElement) assignmentsElement.textContent = stats.assignments;
+}
+
+// ============================================
 // LOAD DATA FROM SUPABASE
 // ============================================
 
@@ -52,7 +123,7 @@ async function loadAllData() {
         announcementsData = announcements.map(a => ({
             id: a.id,
             category: a.category || 'General',
-            categoryColor: 'bg-blue-100 text-blue-800 border-blue-300',
+            categoryColor: a.tagcolor || 'bg-blue-100 text-blue-800 border-blue-300',
             title: a.title,
             description: a.description,
             date: a.created_at
@@ -87,6 +158,7 @@ async function loadAllData() {
                 subject: a.subjectname || 'General',
                 subjectColor: 'bg-purple-600',
                 type: a.category || 'Assignment',
+                categoryColor: a.categorycolor || 'bg-blue-100 text-blue-700',
                 title: a.title,
                 description: a.description,
                 deadline: a.deadline,
@@ -109,7 +181,7 @@ async function loadAllData() {
                 'bg-blue-600', 'bg-blue-600', 'bg-blue-600'
             ];
             const icons = [
-                'atom', 'code', 'zap', 'book', 'terminal', 'cpu'
+                'zap', 'circuit-board', 'book', 'atom', 'code', 'terminal'
             ];
             
             let resources = {};
@@ -159,9 +231,12 @@ async function loadAllData() {
             }
             calendarEvents[dateStr].push({
                 title: event.title,
-                description: event.description
+                description: event.description,
+                category: event.category || 'Events'
             });
         });
+        
+        console.log('Calendar events loaded:', calendarEvents);
         
         // Load Contacts
         const { data: contacts, error: contactsError } = await supabase
@@ -188,7 +263,6 @@ async function loadAllData() {
         
         // If Supabase has schedule data, use it
         if (!scheduleError && schedule && schedule.length > 0) {
-            // Convert schedule to required format with 6 time slots
             scheduleData = {
                 timeSlots: [
                     "09:00 AM - 10:15 AM",
@@ -201,24 +275,21 @@ async function loadAllData() {
                 days: []
             };
             
-            // Initialize days structure
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
             dayNames.forEach(dayName => {
                 scheduleData.days.push({
                     day: dayName,
-                    bgColor: 'white', // Will be set from first entry
-                    classes: [null, null, null, null, null, null] // 6 slots
+                    bgColor: 'white',
+                    classes: [null, null, null, null, null, null]
                 });
             });
             
-            // Populate schedule with data from Supabase
             schedule.forEach(item => {
                 const dayIndex = dayNames.indexOf(item.day);
                 if (dayIndex === -1) return;
                 
                 const dayObj = scheduleData.days[dayIndex];
                 
-                // Set background color from first entry
                 if (dayObj.bgColor === 'white' && item.bgcolor) {
                     dayObj.bgColor = item.bgcolor;
                 }
@@ -226,7 +297,6 @@ async function loadAllData() {
                 const slotIndex = item.timeslot_index;
                 if (slotIndex < 0 || slotIndex > 5) return;
                 
-                // Create class entry
                 const classEntry = {
                     name: item.subjectname,
                     instructor: item.teachername,
@@ -236,15 +306,14 @@ async function loadAllData() {
                 
                 dayObj.classes[slotIndex] = classEntry;
                 
-                // If Lab, mark next slot as occupied
                 if (item.type === 'Lab' && slotIndex < 5) {
-                    dayObj.classes[slotIndex + 1] = 'SKIP'; // Placeholder for colspan
+                    dayObj.classes[slotIndex + 1] = 'SKIP';
                 }
             });
             
             console.log('Schedule loaded from Supabase');
         } else {
-            // FALLBACK: Use static schedule data if Supabase is empty
+            // FALLBACK
             console.log('No schedule in Supabase, using static fallback data');
             scheduleData = {
                 timeSlots: [
@@ -262,18 +331,14 @@ async function loadAllData() {
                         classes: [
                             { name: "ENG II", instructor: "NHS", room: "508", colspan: 1 },
                             { name: "BEE", instructor: "FHR", room: "508", colspan: 1 },
-                            null,
-                            null,
-                            null,
-                            null
+                            null, null, null, null
                         ]
                     },
                     {
                         day: "MONDAY",
                         bgColor: "blue",
                         classes: [
-                            null,
-                            null,
+                            null, null,
                             { name: "PHY II", instructor: "SUA", room: "GL-2", colspan: 1 },
                             null,
                             { name: "SP", instructor: "GMN", room: "506", colspan: 1 },
@@ -285,19 +350,14 @@ async function loadAllData() {
                         bgColor: "white",
                         classes: [
                             { name: "BEE Lab", instructor: "FHR", room: "108", colspan: 2 },
-                            'SKIP',
-                            null,
-                            null,
-                            null,
-                            null
+                            'SKIP', null, null, null, null
                         ]
                     },
                     {
                         day: "WEDNESDAY",
                         bgColor: "blue",
                         classes: [
-                            null,
-                            null,
+                            null, null,
                             { name: "PHY II", instructor: "SUA", room: "GL-1", colspan: 1 },
                             { name: "SP", instructor: "GMN", room: "408", colspan: 1 },
                             null,
@@ -309,11 +369,7 @@ async function loadAllData() {
                         bgColor: "white",
                         classes: [
                             { name: "SP Lab", instructor: "GMN", room: "309", colspan: 2 },
-                            'SKIP',
-                            null,
-                            null,
-                            null,
-                            null
+                            'SKIP', null, null, null, null
                         ]
                     }
                 ]
@@ -335,7 +391,6 @@ async function loadAllData() {
 document.addEventListener('DOMContentLoaded', async function() {
     lucide.createIcons();
     
-    // Wait for Supabase library to load
     let attempts = 0;
     const maxAttempts = 50;
     
@@ -347,6 +402,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             initSupabase();
             await loadAllData();
             renderPortalContent();
+            updateWeeklyStats();
             initializeEnhancements();
         } else if (attempts >= maxAttempts) {
             clearInterval(waitForSupabase);
@@ -377,25 +433,25 @@ function showToast(message, type = 'info') {
 }
 
 // ============================================
-// AUTO-HIDE LOGIC (36 HOURS)
+// AUTO-HIDE LOGIC (24 HOURS)
 // ============================================
 
 function shouldShowAnnouncement(dateString) {
     const announcementDate = new Date(dateString);
     const now = new Date();
-    const hours36Ago = new Date(now.getTime() - (36 * 60 * 60 * 1000));
-    return announcementDate >= hours36Ago;
+    const hours24Ago = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    return announcementDate >= hours24Ago;
 }
 
 function shouldShowAssignment(deadline) {
     const deadlineDate = new Date(deadline);
     const now = new Date();
-    const hours36AfterDeadline = new Date(deadlineDate.getTime() + (36 * 60 * 60 * 1000));
-    return now < hours36AfterDeadline;
+    const hours24AfterDeadline = new Date(deadlineDate.getTime() + (24 * 60 * 60 * 1000));
+    return now < hours24AfterDeadline;
 }
 
 // ============================================
-// COUNTDOWN TIMER WITH URGENT WARNINGS
+// COUNTDOWN TIMER
 // ============================================
 
 function calculateTimeRemaining(deadline) {
@@ -508,7 +564,7 @@ function createAssignmentCard(assignment) {
                 <span class="text-xs font-semibold text-white px-3 py-1 rounded-full ${assignment.subjectColor}">
                     ${assignment.subject}
                 </span>
-                <span class="text-xs font-semibold ${assignment.type === 'Assignment' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'} px-3 py-1 rounded-full">
+                <span class="text-xs font-semibold px-3 py-1 rounded-full ${assignment.categoryColor}">
                     ${assignment.type}
                 </span>
             </div>
@@ -580,31 +636,6 @@ function renderAssignmentStats(assignments) {
         </div>
     `;
     lucide.createIcons();
-}
-
-// ============================================
-// ASSIGNMENT FILTERING
-// ============================================
-
-function filterAssignments(type) {
-    currentFilter = type;
-    
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-blue-600', 'text-white');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
-    });
-    event.target.classList.remove('bg-gray-200', 'text-gray-700');
-    event.target.classList.add('bg-blue-600', 'text-white');
-    
-    const cards = document.querySelectorAll('#assignments-container > div');
-    cards.forEach(card => {
-        if (type === 'all') {
-            card.style.display = '';
-        } else {
-            const cardType = card.getAttribute('data-type');
-            card.style.display = cardType === type ? '' : 'none';
-        }
-    });
 }
 
 // ============================================
@@ -680,127 +711,6 @@ function openAssignmentDetails(assignmentId) {
             }
         });
     });
-}
-
-// ============================================
-// SCHEDULE TABLE GENERATOR (FIXED FOR 6 SLOTS)
-// ============================================
-
-function renderSchedule() {
-    const headerRow = document.getElementById('schedule-header');
-    const tbody = document.getElementById('schedule-body');
-    
-    if (!scheduleData || !headerRow || !tbody) return;
-    
-    // Create header with Day + 6 time slots
-    let headerHTML = '<th class="py-3 px-4 rounded-tl-xl">Day</th>';
-    scheduleData.timeSlots.forEach((slot, index) => {
-        const roundClass = index === scheduleData.timeSlots.length - 1 ? 'rounded-tr-xl' : '';
-        headerHTML += `<th class="py-3 px-2 text-xs sm:text-sm ${roundClass}">${slot}</th>`;
-    });
-    headerRow.innerHTML = headerHTML;
-    
-    // Create rows for each day
-    let bodyHTML = '';
-    scheduleData.days.forEach(dayData => {
-        const bgClass = dayData.bgColor === "blue" ? "bg-blue-50" : "bg-white";
-        bodyHTML += `<tr class="${bgClass} rounded-xl shadow-md">`;
-        bodyHTML += `<td class="font-bold text-blue-600 py-4 px-3 rounded-l-xl text-sm sm:text-base">${dayData.day}</td>`;
-        
-        // Process all 6 time slots
-        for (let i = 0; i < 6; i++) {
-            const classData = dayData.classes[i];
-            const isLast = i === 5;
-            const roundClass = isLast ? 'rounded-r-xl' : '';
-            
-            // Skip if this slot is part of a lab (marked as 'SKIP')
-            if (classData === 'SKIP') {
-                continue;
-            }
-            
-            // Empty slot
-            if (classData === null) {
-                bodyHTML += `<td class="py-3 px-2 ${roundClass}"></td>`;
-            } 
-            // Class slot
-            else {
-                const colspanAttr = classData.colspan > 1 ? `colspan="${classData.colspan}"` : '';
-                
-                bodyHTML += `<td class="py-3 px-2 ${roundClass}" ${colspanAttr}>
-                    <div class="bg-white border-2 border-blue-600 rounded-xl shadow-md p-2 w-11/12 mx-auto">
-                        <p class="font-bold text-blue-600 text-xs sm:text-sm">${classData.name}</p>
-                        <p class="italic text-blue-800 text-xs">${classData.instructor}</p>
-                        <p class="text-xs text-gray-600">(${classData.room})</p>
-                    </div>
-                </td>`;
-            }
-        }
-        
-        bodyHTML += '</tr>';
-    });
-    
-    tbody.innerHTML = bodyHTML;
-}
-
-// ============================================
-// EXPORT SCHEDULE
-// ============================================
-
-function exportSchedule() {
-    const scheduleImageUrl = 'https://drive.google.com/uc?export=download&id=19zx8t0FE02QAwTTGAdBv5VMrsj84MpNI';
-    
-    const link = document.createElement('a');
-    link.href = scheduleImageUrl;
-    link.download = 'CSE_63B_Schedule.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// ============================================
-// SUBJECT CARD GENERATOR
-// ============================================
-
-function createSubjectCard(subject) {
-    const typeColor = subject.type === 'lab' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
-    const typeText = subject.type === 'lab' ? 'Lab' : 'Theory';
-    
-    const categoryCount = Object.keys(subject.categories).length;
-    
-    return `
-        <div class="subject-card cursor-pointer bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden transition hover:shadow-2xl hover:border-blue-600 transform hover:scale-105"
-             data-subject-id="${subject.id}"
-             data-subject-name="${subject.name.toLowerCase()}"
-             data-subject-teacher="${subject.teacher.toLowerCase()}">
-            <div class="${subject.color} p-6 text-white relative">
-                <div class="absolute top-4 right-4">
-                    <span class="text-xs font-semibold px-3 py-1 rounded-full ${typeColor}">
-                        ${typeText}
-                    </span>
-                </div>
-                <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mb-4">
-                    <i data-lucide="${subject.icon}" class="w-7 h-7"></i>
-                </div>
-                <h3 class="text-2xl font-bold">${subject.name}</h3>
-                <p class="text-sm opacity-90 mt-1">${subject.fullName}</p>
-                <p class="text-xs opacity-75 mt-2">${subject.teacher}</p>
-            </div>
-            <div class="p-4 bg-white">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2 text-sm text-gray-600">
-                        <i data-lucide="folder" class="w-4 h-4"></i>
-                        <span class="font-medium">${categoryCount} Categories</span>
-                    </div>
-                    <i data-lucide="chevron-right" class="w-5 h-5 text-blue-600"></i>
-                </div>
-                <button onclick="openSubjectModal('${subject.id}'); event.stopPropagation();" 
-                        class="w-full text-center bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium py-2 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
-                    <i data-lucide="folder-open" class="w-4 h-4"></i>
-                    View Resources
-                </button>
-            </div>
-        </div>
-    `;
 }
 
 // ============================================
@@ -928,6 +838,119 @@ function initModalResourceSearch() {
 }
 
 // ============================================
+// SCHEDULE TABLE GENERATOR
+// ============================================
+
+function renderSchedule() {
+    const headerRow = document.getElementById('schedule-header');
+    const tbody = document.getElementById('schedule-body');
+    
+    if (!scheduleData || !headerRow || !tbody) return;
+    
+    let headerHTML = '<th class="py-3 px-4 rounded-tl-xl min-w-[100px]">Day</th>';
+    scheduleData.timeSlots.forEach((slot, index) => {
+        const roundClass = index === scheduleData.timeSlots.length - 1 ? 'rounded-tr-xl' : '';
+        headerHTML += `<th class="py-3 px-2 text-xs sm:text-sm min-w-[140px] ${roundClass}">${slot}</th>`;
+    });
+    headerRow.innerHTML = headerHTML;
+    
+    let bodyHTML = '';
+    scheduleData.days.forEach(dayData => {
+        bodyHTML += `<tr class="bg-white rounded-xl shadow-md">`;
+        bodyHTML += `<td class="font-bold text-blue-600 py-4 px-3 rounded-l-xl text-sm sm:text-base whitespace-nowrap">${dayData.day}</td>`;
+        
+        for (let i = 0; i < 6; i++) {
+            const classData = dayData.classes[i];
+            const isLast = i === 5;
+            const roundClass = isLast ? 'rounded-r-xl' : '';
+            
+            if (classData === 'SKIP') {
+                continue;
+            }
+            
+            if (classData === null) {
+                bodyHTML += `<td class="py-3 px-2 ${roundClass}"></td>`;
+            } else {
+                const colspanAttr = classData.colspan > 1 ? `colspan="${classData.colspan}"` : '';
+                
+                bodyHTML += `<td class="py-3 px-2 ${roundClass}" ${colspanAttr}>
+                    <div class="bg-white border-2 border-blue-600 rounded-xl p-2 w-11/12 mx-auto shadow-md hover:shadow-lg transition-shadow">
+                        <p class="font-bold text-blue-600 text-xs sm:text-sm">${classData.name}</p>
+                        <p class="italic text-blue-800 text-xs">${classData.instructor}</p>
+                        <p class="text-xs text-gray-600">(${classData.room})</p>
+                    </div>
+                </td>`;
+            }
+        }
+        
+        bodyHTML += '</tr>';
+    });
+    
+    tbody.innerHTML = bodyHTML;
+}
+
+// ============================================
+// EXPORT SCHEDULE
+// ============================================
+
+function exportSchedule() {
+    const scheduleImageUrl = 'https://drive.google.com/uc?export=download&id=19zx8t0FE02QAwTTGAdBv5VMrsj84MpNI';
+    
+    const link = document.createElement('a');
+    link.href = scheduleImageUrl;
+    link.download = 'CSE_63B_Schedule.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ============================================
+// SUBJECT CARD GENERATOR
+// ============================================
+
+function createSubjectCard(subject) {
+    const typeColor = subject.type === 'lab' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
+    const typeText = subject.type === 'lab' ? 'Lab' : 'Theory';
+    
+    const categoryCount = Object.keys(subject.categories).length;
+    
+    return `
+        <div class="subject-card cursor-pointer bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden transition hover:shadow-2xl hover:border-blue-600 transform hover:scale-105"
+             data-subject-id="${subject.id}"
+             data-subject-name="${subject.name.toLowerCase()}"
+             data-subject-teacher="${subject.teacher.toLowerCase()}">
+            <div class="${subject.color} p-6 text-white relative">
+                <div class="absolute top-4 right-4">
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full ${typeColor}">
+                        ${typeText}
+                    </span>
+                </div>
+                <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mb-4">
+                    <i data-lucide="${subject.icon}" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-2xl font-bold">${subject.name}</h3>
+                <p class="text-sm opacity-90 mt-1">${subject.fullName}</p>
+                <p class="text-xs opacity-75 mt-2">${subject.teacher}</p>
+            </div>
+            <div class="p-4 bg-white">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <i data-lucide="folder" class="w-4 h-4"></i>
+                        <span class="font-medium">${categoryCount} Categories</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-blue-600"></i>
+                </div>
+                <button onclick="openSubjectModal('${subject.id}'); event.stopPropagation();" 
+                        class="w-full text-center bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium py-2 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                    <i data-lucide="folder-open" class="w-4 h-4"></i>
+                    View Resources
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
 // CONTACT CARD GENERATOR
 // ============================================
 
@@ -976,7 +999,7 @@ function createContactCard(contact) {
 }
 
 // ============================================
-// CALENDAR GENERATOR WITH MONTH NAVIGATION
+// CALENDAR GENERATOR (FIXED - COLOR-CODED TOOLTIPS)
 // ============================================
 
 function generateCalendar(monthOffset = 0) {
@@ -1007,8 +1030,8 @@ function generateCalendar(monthOffset = 0) {
             <div class="text-center font-semibold text-gray-600 py-2">Tue</div>
             <div class="text-center font-semibold text-gray-600 py-2">Wed</div>
             <div class="text-center font-semibold text-gray-600 py-2">Thu</div>
-            <div class="text-center font-semibold text-gray-600 py-2">Fri</div>
-            <div class="text-center font-semibold text-gray-600 py-2">Sat</div>
+            <div class="text-center font-semibold text-red-600 py-2">Fri</div>
+            <div class="text-center font-semibold text-red-600 py-2">Sat</div>
         </div>
         <div class="grid grid-cols-7 gap-2">
     `;
@@ -1025,8 +1048,26 @@ function generateCalendar(monthOffset = 0) {
         const hasEvent = calendarEvents[dateStr] && calendarEvents[dateStr].length > 0;
         const isToday = isCurrentMonth && day === today.getDate();
         
+        const currentDate = new Date(year, month, day);
+        const dayOfWeek = currentDate.getDay();
+        const isFridayOrSaturday = dayOfWeek === 5 || dayOfWeek === 6;
+        
+        let colorClass = '';
+        if (hasEvent) {
+            const event = calendarEvents[dateStr][0];
+            if (event.category === 'Test') {
+                colorClass = 'has-event-purple';
+            } else if (event.category === 'Off Day') {
+                colorClass = 'has-event-red';
+            } else {
+                colorClass = 'has-event';
+            }
+        } else if (isFridayOrSaturday) {
+            colorClass = 'weekend-day';
+        }
+        
         calendarHTML += `
-            <div class="calendar-day ${hasEvent ? 'has-event' : ''} ${isToday ? 'today' : ''}" 
+            <div class="calendar-day ${colorClass} ${isToday ? 'today' : ''}" 
                  data-date="${dateStr}"
                  ${hasEvent ? `onmouseenter="showEventTooltip(event, '${dateStr}')" onmouseleave="hideEventTooltip()"` : ''}>
                 ${day}
@@ -1049,9 +1090,17 @@ function showEventTooltip(event, dateStr) {
     
     let tooltipHTML = '';
     events.forEach(evt => {
+        // Determine title color based on category
+        let titleColor = 'text-blue-600'; // Default for Events
+        if (evt.category === 'Test') {
+            titleColor = 'text-purple-600';
+        } else if (evt.category === 'Off Day') {
+            titleColor = 'text-red-600';
+        }
+        
         tooltipHTML += `
             <div class="mb-2 last:mb-0">
-                <div class="font-bold text-blue-600 text-sm">${evt.title}</div>
+                <div class="font-bold ${titleColor} text-sm">${evt.title}</div>
                 <div class="text-xs text-gray-600">${evt.description}</div>
             </div>
         `;
@@ -1086,7 +1135,6 @@ function renderPortalContent() {
         `;
     } else {
         announcementsContainer.innerHTML = visibleAnnouncements
-            .slice(0, 3)
             .map(createAnnouncementCard)
             .join('');
     }
@@ -1181,8 +1229,7 @@ function initializeEnhancements() {
         let current = '';
         sections.forEach(section => {
             const sectionTop = section.offsetTop;
-            const sectionHeight = section.clientHeight;
-            if (pageYOffset >= sectionTop - 100) {
+            if (pageYOffset >= (sectionTop - 100)) {
                 current = section.getAttribute('id');
             }
         });
@@ -1214,6 +1261,16 @@ function initializeEnhancements() {
         });
     }
     
+    // Admin button - always visible
+    const adminBtn = document.getElementById('admin-button');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', function() {
+            window.location.href = 'admin.html';
+        });
+        adminBtn.style.opacity = '1';
+        adminBtn.style.pointerEvents = 'auto';
+    }
+    
     const exportBtn = document.getElementById('export-schedule-btn');
     if (exportBtn) {
         exportBtn.addEventListener('click', exportSchedule);
@@ -1224,7 +1281,7 @@ function initializeEnhancements() {
 }
 
 // ============================================
-// SWIPE TO CLOSE MODALS (MOBILE)
+// SWIPE TO CLOSE MODALS
 // ============================================
 
 function initSwipeToClose() {
@@ -1443,7 +1500,6 @@ function initModalHandlers() {
 }
 
 // Make functions globally accessible
-window.filterAssignments = filterAssignments;
 window.openAssignmentDetails = openAssignmentDetails;
 window.openSubjectModal = openSubjectModal;
 window.showEventTooltip = showEventTooltip;
@@ -1453,4 +1509,5 @@ window.hideEventTooltip = hideEventTooltip;
 setInterval(async () => {
     await loadAllData();
     renderPortalContent();
+    updateWeeklyStats();
 }, 3600000);
