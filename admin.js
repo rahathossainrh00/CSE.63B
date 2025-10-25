@@ -1,5 +1,5 @@
 // ============================================
-// 🔧 ADMIN PANEL - COMPLETE VERSION
+// ADMIN PANEL - COMPLETE VERSION
 // ============================================
 
 // Global state
@@ -16,6 +16,13 @@ const TIME_SLOTS = [
     { index: 3, time: "01:00 PM - 02:15 PM", start: "01:00 PM" },
     { index: 4, time: "02:15 PM - 03:30 PM", start: "02:15 PM" },
     { index: 5, time: "03:30 PM - 04:45 PM", start: "03:30 PM" }
+];
+
+// Calendar categories with colors
+const CALENDAR_CATEGORIES = [
+    { name: 'Test', color: 'purple', bgClass: 'bg-purple-100', textClass: 'text-purple-800', borderClass: 'border-purple-300' },
+    { name: 'Events', color: 'blue', bgClass: 'bg-blue-100', textClass: 'text-blue-800', borderClass: 'border-blue-300' },
+    { name: 'Off Day', color: 'red', bgClass: 'bg-red-100', textClass: 'text-red-800', borderClass: 'border-red-300' }
 ];
 
 // Tag colors for announcements
@@ -35,7 +42,7 @@ const ASSIGNMENT_CATEGORY_COLORS = [
 ];
 
 // ============================================
-// 🚀 INITIALIZATION
+// ðŸš€ INITIALIZATION
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -74,7 +81,7 @@ function setupAuthListener() {
 }
 
 // ============================================
-// 🎨 UI FUNCTIONS
+// ðŸŽ¨ UI FUNCTIONS
 // ============================================
 
 function showLoginPage() {
@@ -184,7 +191,7 @@ function hideToast() {
 }
 
 // ============================================
-// 🔐 AUTH FUNCTIONS
+// ðŸ” AUTH FUNCTIONS
 // ============================================
 
 function setupEventListeners() {
@@ -234,7 +241,7 @@ async function handleLogout() {
 }
 
 // ============================================
-// 📊 DATA LOADING FUNCTIONS
+// ðŸ“Š DATA LOADING FUNCTIONS
 // ============================================
 
 async function loadSectionData(section) {
@@ -269,8 +276,13 @@ async function loadSectionData(section) {
 }
 
 // ============================================
-// 🗓️ CALENDAR FUNCTIONS
+// ðŸ—“ï¸ CALENDAR FUNCTIONS
 // ============================================
+
+function getCategoryColors(category) {
+    const cat = CALENDAR_CATEGORIES.find(c => c.name === category);
+    return cat || CALENDAR_CATEGORIES[1]; // Default to Events
+}
 
 async function loadCalendar() {
     const { data, error } = await supabase
@@ -296,11 +308,18 @@ async function loadCalendar() {
 
 function createCalendarCard(event) {
     const div = document.createElement('div');
-    div.className = 'bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition';
+    const colors = getCategoryColors(event.category);
+    
+    div.className = `bg-white border-2 ${colors.borderClass} rounded-lg p-4 shadow-sm hover:shadow-md transition`;
     div.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex-1">
-                <div class="text-sm text-blue-600 font-semibold mb-1">${new Date(event.date).toLocaleDateString()}</div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${colors.bgClass} ${colors.textClass} border ${colors.borderClass}">
+                        ${event.category || 'Events'}
+                    </span>
+                    <div class="text-sm ${colors.textClass} font-semibold">${new Date(event.date).toLocaleDateString()}</div>
+                </div>
                 <h3 class="text-lg font-bold text-gray-800 mb-2">${event.title}</h3>
                 <p class="text-gray-600 text-sm">${event.description}</p>
             </div>
@@ -318,7 +337,7 @@ function createCalendarCard(event) {
 }
 
 // ============================================
-// 📢 ANNOUNCEMENTS FUNCTIONS
+// ðŸ“¢ ANNOUNCEMENTS FUNCTIONS
 // ============================================
 
 async function loadAnnouncements() {
@@ -372,7 +391,7 @@ function createAnnouncementCard(announcement) {
 }
 
 // ============================================
-// 📝 ASSIGNMENTS FUNCTIONS
+// ðŸ“ ASSIGNMENTS FUNCTIONS
 // ============================================
 
 async function loadAssignments() {
@@ -436,7 +455,7 @@ function createAssignmentCard(assignment) {
 }
 
 // ============================================
-// 📘 SUBJECTS FUNCTIONS
+// ðŸ“˜ SUBJECTS FUNCTIONS
 // ============================================
 
 async function loadSubjects() {
@@ -473,15 +492,12 @@ function createSubjectCard(subject) {
     div.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                        ${subject.coursecode || 'N/A'}
-                    </span>
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 class="text-lg font-bold text-gray-800">${subject.subjectname}</h3>
                     <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${subject.tag === 'Lab' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}">
                         ${subject.tag || 'N/A'}
                     </span>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800 mb-1">${subject.subjectname}</h3>
                 <p class="text-gray-600 text-sm mb-2">${subject.teachername || 'N/A'}</p>
                 <div class="text-xs text-gray-500">${resourceCount} resource(s) in ${Object.keys(resources).length} categories</div>
             </div>
@@ -499,7 +515,7 @@ function createSubjectCard(subject) {
 }
 
 // ============================================
-// ⏰ SCHEDULE FUNCTIONS
+// â° SCHEDULE FUNCTIONS
 // ============================================
 
 async function loadSchedule() {
@@ -564,7 +580,7 @@ function createScheduleCard(schedule) {
 }
 
 // ============================================
-// 📞 CONTACTS FUNCTIONS
+// ðŸ“ž CONTACTS FUNCTIONS
 // ============================================
 
 async function loadContacts() {
@@ -598,8 +614,8 @@ function createContactCard(contact) {
                 <h3 class="text-lg font-bold text-gray-800 mb-1">${contact.name}</h3>
                 <p class="text-blue-600 text-sm font-medium mb-2">${contact.designation}</p>
                 <div class="text-gray-600 text-sm space-y-1">
-                    <div>📧 ${contact.email}</div>
-                    <div>📞 ${contact.contactnumber}</div>
+                    <div>ðŸ“§ ${contact.email}</div>
+                    <div>ðŸ“ž ${contact.contactnumber}</div>
                     <div class="text-xs text-gray-500 mt-2">${contact.contactinstructions || 'No instructions'}</div>
                 </div>
             </div>
@@ -617,7 +633,7 @@ function createContactCard(contact) {
 }
 
 // ============================================
-// ✏️ MODAL & FORM FUNCTIONS
+// âœï¸ MODAL & FORM FUNCTIONS
 // ============================================
 
 function openAddModal(section) {
@@ -693,11 +709,24 @@ function getFormFields(section, data) {
     
     switch(section) {
         case 'calendar':
+            // Build category dropdown
+            const categoryOptions = CALENDAR_CATEGORIES.map(cat => 
+                `<option value="${cat.name}" ${data?.category === cat.name ? 'selected' : ''}>${cat.name}</option>`
+            ).join('');
+            
             fields = `
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
                     <input type="date" id="field-date" value="${data?.date || ''}" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="field-category" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        ${categoryOptions}
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Test = Purple, Events = Blue, Off Day = Red</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
@@ -746,56 +775,48 @@ function getFormFields(section, data) {
             break;
             
         case 'assignments':
-            // Build category color dropdown
-            const categoryColorOptions = ASSIGNMENT_CATEGORY_COLORS.map(color => 
-                `<option value="${color.class}" ${data?.categorycolor === color.class ? 'selected' : ''}>${color.name}</option>`
-            ).join('');
-            
-            fields = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
-                    <input type="text" id="field-subjectname" value="${data?.subjectname || ''}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <input type="text" id="field-category" value="${data?.category || ''}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="e.g., Assignment, Project, Presentation">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Category Color</label>
-                    <select id="field-categorycolor" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        ${categoryColorOptions}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                    <input type="text" id="field-title" value="${data?.title || ''}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea id="field-description" rows="3" required
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${data?.description || ''}</textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
-                    <input type="datetime-local" id="field-deadline" value="${data?.deadline ? data.deadline.slice(0, 16) : ''}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Related Links</label>
-                    <div id="assignment-links-container" class="space-y-2 mb-2">
-                        <!-- Dynamic links will be added here -->
-                    </div>
-                    <button type="button" onclick="addAssignmentLink()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                        + Add Link
-                    </button>
-                </div>
-            `;
-            break;
+    fields = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
+            <input type="text" id="field-subjectname" value="${data?.subjectname || ''}" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <select id="field-category" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="Assignment" ${data?.category === 'Assignment' ? 'selected' : ''}>Assignment (Blue)</option>
+                <option value="Test" ${data?.category === 'Test' ? 'selected' : ''}>Test (Red)</option>
+                <option value="Presentation" ${data?.category === 'Presentation' ? 'selected' : ''}>Presentation (Purple)</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Color is automatically assigned based on category</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+            <input type="text" id="field-title" value="${data?.title || ''}" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea id="field-description" rows="3" required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${data?.description || ''}</textarea>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Deadline</label>
+            <input type="datetime-local" id="field-deadline" value="${data?.deadline ? data.deadline.slice(0, 16) : ''}" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Related Links</label>
+            <div id="assignment-links-container" class="space-y-2 mb-2">
+                <!-- Dynamic links will be added here -->
+            </div>
+            <button type="button" onclick="addAssignmentLink()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                + Add Link
+            </button>
+        </div>
+    `;
+    break;
             
         case 'subjects':
             fields = `
@@ -896,14 +917,6 @@ function getFormFields(section, data) {
                         <option value="Lab" ${data?.type === 'Lab' ? 'selected' : ''}>Lab (spans 2 slots)</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
-                    <select id="field-bgcolor" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="white" ${data?.bgcolor === 'white' ? 'selected' : ''}>White</option>
-                        <option value="blue" ${data?.bgcolor === 'blue' ? 'selected' : ''}>Blue</option>
-                    </select>
-                </div>
             `;
             break;
             
@@ -942,7 +955,7 @@ function getFormFields(section, data) {
 }
 
 // ============================================
-// 📚 SUBJECT RESOURCES DYNAMIC FORM
+// ðŸ“š SUBJECT RESOURCES DYNAMIC FORM
 // ============================================
 
 function initSubjectResourceForm() {
@@ -969,23 +982,23 @@ function addSubjectCategory(categoryName = '', files = []) {
     const categoryIndex = container.children.length;
     
     const categoryDiv = document.createElement('div');
-    categoryDiv.className = 'border border-gray-300 rounded-lg p-4 bg-gray-50';
+    categoryDiv.className = 'border-2 border-gray-300 rounded-lg p-3 sm:p-4 bg-gray-50';
     categoryDiv.dataset.categoryIndex = categoryIndex;
     
     categoryDiv.innerHTML = `
-        <div class="flex justify-between items-center mb-3">
-            <input type="text" class="category-name flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+        <div class="flex flex-col sm:flex-row gap-2 sm:items-center mb-3">
+            <input type="text" class="category-name flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" 
                    placeholder="Category Name (e.g., Books, Slides)" value="${categoryName}" required>
             <button type="button" onclick="removeSubjectCategory(${categoryIndex})" 
-                    class="ml-2 text-red-600 hover:text-red-800 px-3 py-2 rounded bg-red-50 hover:bg-red-100">
-                Remove
+                    class="text-red-600 hover:text-red-800 px-4 py-2 rounded bg-red-50 hover:bg-red-100 text-sm font-medium whitespace-nowrap">
+                Remove Category
             </button>
         </div>
-        <div class="files-container space-y-2 mb-2" data-category="${categoryIndex}">
+        <div class="files-container space-y-3 mb-3" data-category="${categoryIndex}">
             <!-- Files will be added here -->
         </div>
         <button type="button" onclick="addSubjectFile(${categoryIndex})" 
-                class="text-sm text-green-600 hover:text-green-800 font-medium">
+                class="text-sm text-green-600 hover:text-green-800 font-medium px-3 py-2 bg-green-50 hover:bg-green-100 rounded">
             + Add File
         </button>
     `;
@@ -1009,18 +1022,22 @@ function addSubjectFile(categoryIndex, fileName = '', fileUrl = '') {
     const fileIndex = filesContainer.children.length;
     
     const fileDiv = document.createElement('div');
-    fileDiv.className = 'flex gap-2 items-center file-entry';
+    fileDiv.className = 'bg-white border border-gray-200 rounded-lg p-3 file-entry';
     fileDiv.dataset.fileIndex = fileIndex;
     
     fileDiv.innerHTML = `
-        <input type="text" class="file-name flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
-               placeholder="File Name" value="${fileName}" required>
-        <input type="url" class="file-url flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
-               placeholder="File URL (https://...)" value="${fileUrl}" required>
-        <button type="button" onclick="removeSubjectFile(this)" 
-                class="text-red-600 hover:text-red-800 text-sm px-2 py-2">
-            ✕
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <div class="flex-1 space-y-2">
+                <input type="text" class="file-name w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                       placeholder="File Name" value="${fileName}" required>
+                <input type="url" class="file-url w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                       placeholder="File URL (https://...)" value="${fileUrl}" required>
+            </div>
+            <button type="button" onclick="removeSubjectFile(this)" 
+                    class="self-start sm:self-center text-red-600 hover:text-red-800 px-3 py-2 bg-red-50 hover:bg-red-100 rounded text-sm font-medium whitespace-nowrap">
+                Remove
+            </button>
+        </div>
     `;
     
     filesContainer.appendChild(fileDiv);
@@ -1039,7 +1056,7 @@ function removeSubjectFile(button) {
 }
 
 // ============================================
-// 📝 ASSIGNMENT LINKS DYNAMIC FORM
+// ðŸ”— ASSIGNMENT LINKS DYNAMIC FORM
 // ============================================
 
 function initAssignmentLinksForm() {
@@ -1074,15 +1091,17 @@ function addAssignmentLink(linkUrl = '') {
     if (!container) return;
     
     const linkDiv = document.createElement('div');
-    linkDiv.className = 'flex gap-2 items-center link-entry';
+    linkDiv.className = 'bg-gray-50 border border-gray-200 rounded-lg p-2 link-entry';
     
     linkDiv.innerHTML = `
-        <input type="url" class="link-url flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
-               placeholder="Enter URL (https://...)" value="${linkUrl}">
-        <button type="button" onclick="removeAssignmentLink(this)" 
-                class="text-red-600 hover:text-red-800 text-sm px-2 py-2">
-            ✕
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <input type="url" class="link-url flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                   placeholder="Enter URL (https://...)" value="${linkUrl}">
+            <button type="button" onclick="removeAssignmentLink(this)" 
+                    class="text-red-600 hover:text-red-800 px-3 py-2 bg-red-50 hover:bg-red-100 rounded text-sm font-medium whitespace-nowrap">
+                Remove
+            </button>
+        </div>
     `;
     
     container.appendChild(linkDiv);
@@ -1093,7 +1112,7 @@ function removeAssignmentLink(button) {
 }
 
 // ============================================
-// 💾 SAVE FUNCTIONS
+// ðŸ’¾ SAVE FUNCTIONS
 // ============================================
 
 async function saveItem() {
@@ -1138,6 +1157,7 @@ function getFormData(section) {
         case 'calendar':
             formData = {
                 date: document.getElementById('field-date').value,
+                category: document.getElementById('field-category').value,
                 title: document.getElementById('field-title').value,
                 description: document.getElementById('field-description').value
             };
@@ -1153,22 +1173,32 @@ function getFormData(section) {
             break;
             
         case 'assignments':
-            // Collect all links
-            const linkInputs = document.querySelectorAll('.link-url');
-            const links = Array.from(linkInputs)
-                .map(input => input.value.trim())
-                .filter(link => link !== '');
-            
-            formData = {
-                subjectname: document.getElementById('field-subjectname').value,
-                category: document.getElementById('field-category').value,
-                categorycolor: document.getElementById('field-categorycolor').value,
-                title: document.getElementById('field-title').value,
-                description: document.getElementById('field-description').value,
-                deadline: document.getElementById('field-deadline').value,
-                relatedlinks: JSON.stringify(links)
-            };
-            break;
+    // Collect all links
+    const linkInputs = document.querySelectorAll('.link-url');
+    const links = Array.from(linkInputs)
+        .map(input => input.value.trim())
+        .filter(link => link !== '');
+    
+    // Get category and automatically assign color
+    const category = document.getElementById('field-category').value;
+    let categoryColor = 'bg-blue-100 text-blue-700'; // Default for Assignment
+    
+    if (category === 'Test') {
+        categoryColor = 'bg-red-100 text-red-700';
+    } else if (category === 'Presentation') {
+        categoryColor = 'bg-purple-100 text-purple-700';
+    }
+    
+    formData = {
+        subjectname: document.getElementById('field-subjectname').value,
+        category: category,
+        categorycolor: categoryColor,
+        title: document.getElementById('field-title').value,
+        description: document.getElementById('field-description').value,
+        deadline: document.getElementById('field-deadline').value,
+        relatedlinks: JSON.stringify(links)
+    };
+    break;
             
         case 'subjects':
             // Collect all categories and their files
@@ -1206,6 +1236,7 @@ function getFormData(section) {
                 coursecode: document.getElementById('field-coursecode').value,
                 teachername: document.getElementById('field-teachername').value,
                 tag: document.getElementById('field-tag').value,
+                drivefolder: document.getElementById('field-drivefolder').value,
                 resources: resources
             };
             break;
@@ -1222,7 +1253,7 @@ function getFormData(section) {
                 starttime: timeSlot ? timeSlot.start : '',
                 timeslot_index: timeslotIndex,
                 type: document.getElementById('field-type').value,
-                bgcolor: document.getElementById('field-bgcolor').value
+                bgcolor: 'white'
             };
             break;
             
@@ -1241,7 +1272,7 @@ function getFormData(section) {
 }
 
 // ============================================
-// 🗑️ DELETE FUNCTIONS
+// ðŸ—‘ï¸ DELETE FUNCTIONS
 // ============================================
 
 async function deleteItem(section, id) {
@@ -1272,7 +1303,7 @@ async function deleteItem(section, id) {
 }
 
 // ============================================
-// 🌐 MAKE FUNCTIONS GLOBALLY ACCESSIBLE
+// ðŸŒ MAKE FUNCTIONS GLOBALLY ACCESSIBLE
 // ============================================
 
 window.openEditor = openEditor;
