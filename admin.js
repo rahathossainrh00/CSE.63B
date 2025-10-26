@@ -150,6 +150,13 @@ function openEditor(section) {
     modal.classList.add('flex');
     
     loadSectionData(section);
+    
+    // FIX: Refresh icons when modal opens
+    setTimeout(() => {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }, 150);
 }
 
 function closeEditor() {
@@ -241,7 +248,7 @@ async function handleLogout() {
 }
 
 // ============================================
-// ðŸ“Š DATA LOADING FUNCTIONS
+// DATA LOADING FUNCTIONS
 // ============================================
 
 async function loadSectionData(section) {
@@ -273,10 +280,17 @@ async function loadSectionData(section) {
     }
     
     showLoading(false);
+    
+    // FIX: Refresh icons after loading content
+    setTimeout(() => {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }, 100);
 }
 
 // ============================================
-// ðŸ—“ï¸ CALENDAR FUNCTIONS
+// CALENDAR FUNCTIONS
 // ============================================
 
 function getCategoryColors(category) {
@@ -580,7 +594,7 @@ function createScheduleCard(schedule) {
 }
 
 // ============================================
-// ðŸ“ž CONTACTS FUNCTIONS
+// CONTACTS FUNCTIONS
 // ============================================
 
 async function loadContacts() {
@@ -654,6 +668,13 @@ function openAddModal(section) {
     } else if (section === 'assignments') {
         initAssignmentLinksForm();
     }
+    
+    // FIX: Refresh icons in forms
+    setTimeout(() => {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }, 150);
 }
 
 async function editItem(section, id) {
@@ -690,6 +711,13 @@ async function editItem(section, id) {
     } else if (section === 'assignments') {
         initAssignmentLinksForm();
     }
+    
+    // FIX: Refresh icons in edit forms
+    setTimeout(() => {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }, 150);
 }
 
 function getTableName(section) {
@@ -1195,8 +1223,7 @@ function getFormData(section) {
         categorycolor: categoryColor,
         title: document.getElementById('field-title').value,
         description: document.getElementById('field-description').value,
-        deadline: document.getElementById('field-deadline').value,
-        relatedlinks: JSON.stringify(links)
+deadline: new Date(document.getElementById('field-deadline').value).toISOString(),        relatedlinks: JSON.stringify(links)
     };
     break;
             
