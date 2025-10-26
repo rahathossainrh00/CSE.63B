@@ -448,6 +448,7 @@ async function loadAllData() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async function() {
+    showFullScreenLoading(); // Show full-screen loader immediately
     lucide.createIcons();
     
     let attempts = 0;
@@ -463,6 +464,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             renderPortalContent();
             updateWeeklyStats();
             initializeEnhancements();
+            hideLoadingState(); // Hide the full-screen loader
         } else if (attempts >= maxAttempts) {
             clearInterval(waitForSupabase);
             console.error('Supabase library failed to load');
@@ -476,6 +478,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 // ============================================
 
 function showLoadingState() {
+    // Show skeleton loaders in containers (NOT full-screen overlay)
     const containers = ['announcements-container', 'assignments-container', 'subjects-container'];
     containers.forEach(id => {
         const container = document.getElementById(id);
@@ -485,6 +488,20 @@ function showLoadingState() {
             `).join('');
         }
     });
+}
+
+function showFullScreenLoading() {
+    const loadingOverlay = document.getElementById('loading');
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('hidden');
+    }
+}
+
+function hideLoadingState() {
+    const loadingOverlay = document.getElementById('loading');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
 }
 
 function showToast(message, type = 'info') {
@@ -586,7 +603,8 @@ function createAnnouncementCard(announcement) {
         day: 'numeric',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Dhaka'
     });
     
     return `
@@ -607,12 +625,13 @@ function createAnnouncementCard(announcement) {
 
 function createAssignmentCard(assignment) {
     const deadlineDate = new Date(assignment.deadline).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Dhaka'  // Force Bangladesh time
+});
     
     const isNew = assignment.isNew || false;
     
@@ -1025,25 +1044,25 @@ function createContactCard(contact) {
                         : `<i data-lucide="user" class="w-10 h-10 text-blue-600"></i>`
                     }
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 min-w-0">
                     <h3 class="text-lg font-bold text-gray-800">${contact.name}</h3>
                     <p class="text-sm text-blue-600 font-semibold">${contact.designation}</p>
                     <div class="mt-3 space-y-2 text-sm text-gray-600">
-                        <p class="flex items-center">
-                            <i data-lucide="mail" class="w-4 h-4 mr-2 text-gray-500"></i>
-                            <a href="mailto:${contact.email}" class="hover:underline">${contact.email}</a>
-                        </p>
-                        <p class="flex items-center">
-                            <i data-lucide="phone" class="w-4 h-4 mr-2 text-gray-500"></i>
-                            <a href="tel:${contact.phone}" class="hover:underline">${contact.phone}</a>
-                        </p>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="mail" class="w-4 h-4 text-gray-500 flex-shrink-0"></i>
+                            <a href="mailto:${contact.email}" class="hover:underline hover:text-blue-600 break-all">${contact.email}</a>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="phone" class="w-4 h-4 text-gray-500 flex-shrink-0"></i>
+                            <a href="tel:${contact.phone}" class="hover:underline hover:text-blue-600">${contact.phone}</a>
+                        </div>
                         ${contact.howToContact ? `
                             <div class="mt-3 pt-3 border-t border-gray-200">
                                 <div class="flex items-start gap-2">
                                     <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                                         <i data-lucide="info" class="w-3 h-3 text-blue-600"></i>
                                     </div>
-                                    <div>
+                                    <div class="flex-1 min-w-0">
                                         <p class="font-semibold text-gray-700 text-xs mb-1">How to Contact</p>
                                         <p class="text-xs text-gray-600 leading-relaxed">${contact.howToContact}</p>
                                     </div>
